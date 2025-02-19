@@ -1,3 +1,6 @@
+# Enable debug output
+set -x
+
 #!/bin/bash
 
 # Colors for output
@@ -14,114 +17,97 @@ check_error() {
     fi
 }
 
-# Function to print section header
-print_header() {
-    echo -e "\n${BLUE}=== $1 ===${NC}\n"
-}
-
-# Function to apply changes
-apply_changes() {
-    local description="$1"
-    shift # Remove first argument
-    local files=("$@")
-
-    print_header "Applying changes: $description"
+# Function to wait for server
+wait_for_server() {
+    local logfile="server_check.log"
+    echo "Waiting for server to be ready... (logging to $logfile)"
+    local max_attempts=30
+    local attempt=1
     
-    # Show files that will be changed
-    echo -e "${GREEN}Files to be modified:${NC}"
-    for file in "${files[@]}"; do
-        echo "  - $file"
+    # Clear previous log
+    > "$logfile"
+    
+    while [ $attempt -le $max_attempts ]; do
+        {
+            echo "=== Attempt $attempt ==="
+            echo "Checking http://localhost:5173/"
+            curl -v http://localhost:5173/ 2>&1
+            echo "===================="
+            echo
+        } >> "$logfile"
+        
+        if grep -q "200 OK" "$logfile"; then
+            echo "Server is ready!"
+            return 0
+        fi
+        echo "Attempt $attempt of $max_attempts - Server not ready yet..."
+        sleep 1
+        attempt=$((attempt + 1))
     done
     
-    # Ask for confirmation
-    read -p "Proceed with changes? (y/n) " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo -e "${RED}Changes aborted${NC}"
-        exit 1
-    fi
-
-    # Apply changes here (you'll implement the actual change logic)
-    echo -e "${GREEN}Changes applied successfully${NC}"
+    echo "Server failed to start after $max_attempts attempts"
+    echo "Check $logfile for details"
+    return 1
 }
 
-# Function to commit changes
-commit_changes() {
-    local message="$1"
-    shift # Remove first argument
-    local files=("$@")
+run_tests() {
+    local timestamp=$(date +"%Y%m%d_%H%M%S")
+    local screenshot_dir="test_screenshots/${timestamp}"
     
-    print_header "Committing changes"
+    echo "Creating screenshot directory: ${screenshot_dir}"
+    mkdir -p "${screenshot_dir}"
     
-    # Show git status
-    git status
+    echo "Starting dev server..."
+    npm run dev &
+    local dev_server_pid=$!
     
-    # Stage specified files
-    for file in "${files[@]}"; do
-        echo -e "\n${GREEN}Staging: $file${NC}"
-        git add "$file"
-        check_error "Failed to stage $file"
-    done
+    echo "Waiting 5 seconds for server startup..."
+    sleep 5
     
-    # Commit
-    echo -e "\n${GREEN}Committing with message: $message${NC}"
-    git commit -m "$message"
-    check_error "Failed to commit changes"
-}
-
-# Function to start a feature
-start_feature() {
-    local name="$1"
-    print_header "Starting feature: $name"
+    echo "Running single test for debugging..."
+    npx playwright test -g "should create a new scene" --headed \
+        --trace on \
+        --output="${screenshot_dir}"
+    local test_result=$?
     
-    git checkout -b "feature/$name"
-    check_error "Failed to create feature branch"
+    echo "Shutting down dev server..."
+    pkill -P $dev_server_pid 2>/dev/null
+    kill $dev_server_pid 2>/dev/null
     
-    echo -e "${GREEN}Created and switched to feature/$name${NC}"
-}
-
-# Function to finish a feature
-finish_feature() {
-    print_header "Finishing feature"
+    # Keep only the 3 most recent screenshot directories
+    ls -t test_screenshots | tail -n +4 | xargs -I {} rm -rf "test_screenshots/{}"
     
-    local current_branch=$(git branch --show-current)
-    if [[ ! $current_branch =~ ^feature/ ]]; then
-        echo -e "${RED}Error: Not on a feature branch${NC}"
-        exit 1
-    fi
+    # Launch the report viewer in the background
+    echo "Opening test report..."
+    nohup npx playwright show-report > /dev/null 2>&1 & disown
     
-    git checkout main
-    check_error "Failed to checkout main"
-    
-    git merge "$current_branch"
-    check_error "Failed to merge feature branch"
-    
-    git branch -d "$current_branch"
-    check_error "Failed to delete feature branch"
-    
-    echo -e "${GREEN}Feature completed and merged to main${NC}"
+    return $test_result
 }
 
 # Main command handler
 case "$1" in
+    "test")
+        echo "Starting test command..."
+        run_tests
+        echo "Test command completed with status: $?"
+        ;;
+    "commit")
+        message="$2"
+        shift 2
+        echo "Committing changes with message: $message"
+        for file in "$@"; do
+            git add "$file"
+        done
+        git commit -m "$message"
+        ;;
     "start")
         start_feature "$2"
         ;;
-    "commit")
-        commit_changes "$2" "${@:3}"
-        ;;
-    "finish")
-        finish_feature
-        ;;
-    "apply")
-        apply_changes "$2" "${@:3}"
-        ;;
     *)
         echo "Usage:"
-        echo "  $0 start <feature-name>"
-        echo "  $0 apply <description> [files...]"
+        echo "  $0 test"
         echo "  $0 commit <message> [files...]"
-        echo "  $0 finish"
+        echo "  $0 start <feature-name>"
         exit 1
         ;;
 esac 
