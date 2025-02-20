@@ -1,5 +1,5 @@
 import { writable, get } from 'svelte/store';
-import type { GameScene } from '$lib/types/GameTypes';
+import type { GameScene, GameObject } from '$lib/types/GameTypes';
 import { LocalStorageService, type DataService } from '$lib/services/DataService';
 
 // Initialize data service (can be swapped later)
@@ -8,6 +8,7 @@ const dataService: DataService = new LocalStorageService();
 // Create stores
 export const scenes = writable<GameScene[]>([]);
 export const activeScene = writable<GameScene | null>(null);
+export const selectedObject = writable<GameObject | null>(null);
 
 // Load initial data
 export async function initializeStore() {
@@ -50,4 +51,8 @@ export async function deleteScene(sceneId: string) {
     activeScene.update(current => 
         current?.id === sceneId ? null : current
     );
+}
+
+export function selectObject(object: GameObject | null) {
+    selectedObject.set(object);
 }

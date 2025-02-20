@@ -27,3 +27,19 @@ vite.config.ts.timestamp-*
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# Test artifacts
+/test-output.log
+/server_check.log
+/test_screenshots/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

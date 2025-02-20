@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import type { GameScene, GameObject, ObjectProperties2D } from '$lib/types/GameTypes';
-    import { activeScene } from '$lib/stores/gameStore';
+    import { activeScene, selectObject } from '$lib/stores/gameStore';
     
     export let scene: GameScene;
     let canvas: HTMLCanvasElement;
@@ -36,23 +36,26 @@
 
     function handleMouseDown(event: MouseEvent) {
         const pos = getCanvasMousePosition(event);
-        console.log('Mouse down at:', pos);
         
         // Check objects in reverse order (top-most first)
         for (let i = scene.objects.length - 1; i >= 0; i--) {
             const object = scene.objects[i];
-            console.log('Checking object:', object);
             if (isPointInObject(pos.x, pos.y, object)) {
-                console.log('Found object to drag:', object);
                 isDragging = true;
                 draggedObject = object;
                 dragOffset = {
                     x: pos.x - object.position.x,
                     y: pos.y - object.position.y
                 };
+                selectObject(object);  // Select the object being dragged
                 canvas.style.cursor = 'grabbing';
                 break;
             }
+        }
+
+        // If we clicked empty space, deselect
+        if (!draggedObject) {
+            selectObject(null);
         }
     }
 

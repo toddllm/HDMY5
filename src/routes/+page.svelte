@@ -1,7 +1,7 @@
 <script lang="ts">
     import GameCanvas from '$lib/components/GameCanvas.svelte';
     import ObjectCreationDialog from '$lib/components/ObjectCreationDialog.svelte';
-    import { activeScene, createScene, scenes, updateScene, deleteScene, initializeStore } from '$lib/stores/gameStore';
+    import { activeScene, createScene, scenes, updateScene, deleteScene, initializeStore, selectedObject } from '$lib/stores/gameStore';
     import type { GameObject, GameScene } from '$lib/types/GameTypes';
     import { onMount } from 'svelte';
     
@@ -130,7 +130,69 @@
         
         <aside class="properties-panel">
             <h2 id="properties-heading">Properties</h2>
-            {#if $activeScene}
+            {#if $selectedObject}
+                <div class="properties-form" role="form" aria-labelledby="properties-heading">
+                    <div class="property">
+                        <label for="object-name">Object Name:</label>
+                        <input 
+                            id="object-name"
+                            type="text" 
+                            bind:value={$selectedObject.name}
+                            on:input={() => updateScene($activeScene!)}
+                        />
+                    </div>
+                    <div class="property">
+                        <label for="object-color">Color:</label>
+                        <input 
+                            id="object-color"
+                            type="color" 
+                            bind:value={$selectedObject.properties.color}
+                            on:input={() => updateScene($activeScene!)}
+                        />
+                    </div>
+                    <div class="property">
+                        <label for="object-width">Width:</label>
+                        <input 
+                            id="object-width"
+                            type="number" 
+                            bind:value={$selectedObject.properties.width}
+                            on:input={() => updateScene($activeScene!)}
+                        />
+                    </div>
+                    <div class="property">
+                        <label for="object-height">Height:</label>
+                        <input 
+                            id="object-height"
+                            type="number" 
+                            bind:value={$selectedObject.properties.height}
+                            on:input={() => updateScene($activeScene!)}
+                        />
+                    </div>
+                    <div class="property">
+                        <label>Position:</label>
+                        <div class="position-inputs">
+                            <div>
+                                <label for="pos-x">X:</label>
+                                <input 
+                                    id="pos-x"
+                                    type="number" 
+                                    bind:value={$selectedObject.position.x}
+                                    on:input={() => updateScene($activeScene!)}
+                                />
+                            </div>
+                            <div>
+                                <label for="pos-y">Y:</label>
+                                <input 
+                                    id="pos-y"
+                                    type="number" 
+                                    bind:value={$selectedObject.position.y}
+                                    on:input={() => updateScene($activeScene!)}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {:else if $activeScene}
                 <div class="properties-form" role="form" aria-labelledby="properties-heading">
                     <div class="property">
                         <label for="scene-name">Scene Name:</label>
@@ -138,7 +200,7 @@
                             id="scene-name"
                             type="text" 
                             bind:value={$activeScene.name}
-                            on:input={() => activeScene.update(s => s)}
+                            on:input={() => updateScene($activeScene)}
                         />
                     </div>
                     <div class="property">
@@ -336,5 +398,38 @@
     
     .delete-btn:hover {
         background: #ff6666;
+    }
+    
+    .position-inputs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+    }
+
+    .position-inputs > div {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .position-inputs label {
+        font-size: 0.8em;
+        margin-bottom: 0.25rem;
+    }
+
+    input[type="number"] {
+        width: 100%;
+        padding: 0.5rem;
+        background: #333;
+        border: 1px solid #444;
+        color: white;
+        border-radius: 4px;
+    }
+
+    input[type="color"] {
+        width: 100%;
+        height: 40px;
+        padding: 0;
+        border: none;
+        background: none;
     }
 </style>
