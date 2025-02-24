@@ -1,0 +1,845 @@
+<script lang="ts">
+    import { onMount } from 'svelte';
+    import type { GameScene, GameObject, ObjectProperties2D, ObjectProperties3D, EntityProperties } from '$lib/types/GameTypes';
+    import { activeScene, selectObject } from '$lib/stores/gameStore';
+    
+    export let scene: GameScene;
+    let canvas: HTMLCanvasElement;
+    let ctx: CanvasRenderingContext2D;
+    
+    let isDragging = false;
+    let draggedObject: GameObject | null = null;
+    let dragOffset = { x: 0, y: 0 };
+    
+    // View settings
+    let zoom = 1;
+    let viewRotationY = 0; // For 3D view rotation
+    let isometric = scene.type === '3d'; // Use isometric view for 3D scenes
+    
+    // Camera settings
+    let cameraPosition = { x: 0, y: 0 };
+
+    function getCanvasMousePosition(event: MouseEvent) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        
+        return {
+            x: (event.clientX - rect.left) * scaleX,
+            y: (event.clientY - rect.top) * scaleY
+        };
+    }
+
+    function isPointInObject(x: number, y: number, object: GameObject): boolean {
+        if (object.type === '2d') {
+            const props = object.properties as ObjectProperties2D;
+            const left = object.position.x - props.width / 2;
+            const right = object.position.x + props.width / 2;
+            const top = object.position.y - props.height / 2;
+            const bottom = object.position.y + props.height / 2;
+            
+            return x >= left && x <= right && y >= top && y <= bottom;
+        } else {
+            // For 3D objects, we'll use a 2D projection for selection
+            const props = object.properties as ObjectProperties3D;
+            
+            // In isometric view, we need to adjust the hit testing based on projection
+            if (isometric) {
+                // Calculate screen position after isometric projection
+                const screenPos = projectIsometric(object.position);
+                
+                // Simplified hit box based on the 2D projection
+                const halfWidth = props.width / 2;
+                const halfHeight = props.height / 2;
+                const halfDepth = props.depth / 2;
+                
+                // Create a rough bounding box
+                const boundingBoxSize = Math.max(halfWidth, halfDepth) * 1.4; // Slightly larger for easier selection
+                
+                return (
+                    x >= screenPos.x - boundingBoxSize &&
+                    x <= screenPos.x + boundingBoxSize &&
+                    y >= screenPos.y - halfHeight &&
+                    y <= screenPos.y + halfHeight
+                );
+            } else {
+                // Top-down view
+                const left = object.position.x - props.width / 2;
+                const right = object.position.x + props.width / 2;
+                const top = object.position.y - props.depth / 2;
+                const bottom = object.position.y + props.depth / 2;
+                
+                return x >= left && x <= right && y >= top && y <= bottom;
+            }
+        }
+    }
+
+    function handleMouseDown(event: MouseEvent) {
+        const pos = getCanvasMousePosition(event);
+        
+        // Check objects in reverse order (top-most first)
+        for (let i = scene.objects.length - 1; i >= 0; i--) {
+            const object = scene.objects[i];
+            if (isPointInObject(pos.x, pos.y, object)) {
+                isDragging = true;
+                draggedObject = object;
+                
+                // Calculate drag offset
+                if (isometric && object.type === '3d') {
+                    const screenPos = projectIsometric(object.position);
+                    dragOffset = {
+                        x: pos.x - screenPos.x,
+                        y: pos.y - screenPos.y
+                    };
+                } else {
+                    dragOffset = {
+                        x: pos.x - object.position.x,
+                        y: pos.y - object.position.y
+                    };
+                }
+                
+                selectObject(object);  // Select the object being dragged
+                canvas.style.cursor = 'grabbing';
+                break;
+            }
+        }
+
+        // If we clicked empty space, deselect
+        if (!draggedObject) {
+            selectObject(null);
+        }
+    }
+
+    function handleMouseMove(event: MouseEvent) {
+        if (!isDragging || !draggedObject) return;
+        
+        const pos = getCanvasMousePosition(event);
+        
+        let newPosition;
+        
+        if (isometric && draggedObject.type === '3d') {
+            // Convert screen coordinates back to world 3D coordinates
+            newPosition = unprojectIsometric(pos.x - dragOffset.x, pos.y - dragOffset.y, draggedObject.position.z);
+        } else {
+            newPosition = {
+                x: pos.x - dragOffset.x,
+                y: pos.y - dragOffset.y,
+                z: draggedObject.position.z
+            };
+        }
+        
+        // Update the object's position in the scene
+        activeScene.update(currentScene => {
+            if (!currentScene) return currentScene;
+            
+            const updatedObjects = currentScene.objects.map(obj => {
+                if (obj.id === draggedObject?.id) {
+                    return {
+                        ...obj,
+                        position: newPosition
+                    };
+                }
+                return obj;
+            });
+            
+            return {
+                ...currentScene,
+                objects: updatedObjects
+            };
+        });
+    }
+
+    function handleMouseUp() {
+        if (isDragging) {
+            canvas.style.cursor = 'grab';
+        }
+        isDragging = false;
+        draggedObject = null;
+    }
+    
+    function handleWheel(event: WheelEvent) {
+        // Zoom in/out with mouse wheel
+        event.preventDefault();
+        const zoomSpeed = 0.1;
+        const zoomDelta = event.deltaY > 0 ? -zoomSpeed : zoomSpeed;
+        zoom = Math.max(0.5, Math.min(2, zoom + zoomDelta));
+    }
+    
+    function handleKeyDown(event: KeyboardEvent) {
+        // Rotate the view with arrow keys
+        if (event.key === 'ArrowLeft') {
+            viewRotationY -= 15;
+        } else if (event.key === 'ArrowRight') {
+            viewRotationY += 15;
+        }
+        
+        // Reset view with R key
+        if (event.key === 'r') {
+            zoom = 1;
+            viewRotationY = 0;
+            cameraPosition = { x: 0, y: 0 };
+        }
+    }
+
+    // Project 3D coordinates to 2D isometric view
+    function projectIsometric(pos: { x: number, y: number, z: number }) {
+        // Apply camera position and zoom
+        const x = pos.x - cameraPosition.x;
+        const y = pos.y - cameraPosition.y;
+        const z = pos.z;
+        
+        // Apply rotation
+        const rotationRad = (viewRotationY * Math.PI) / 180;
+        const rotatedX = x * Math.cos(rotationRad) - z * Math.sin(rotationRad);
+        const rotatedZ = x * Math.sin(rotationRad) + z * Math.cos(rotationRad);
+        
+        // Isometric projection
+        const isoX = (rotatedX - rotatedZ) * 0.7 * zoom;
+        const isoY = ((rotatedX + rotatedZ) * 0.4 - y) * zoom;
+        
+        // Center in canvas
+        return {
+            x: canvas.width / 2 + isoX,
+            y: canvas.height / 2 + isoY
+        };
+    }
+    
+    // Convert 2D screen coordinates back to 3D world coordinates
+    function unprojectIsometric(screenX: number, screenY: number, z: number) {
+        // Center of canvas
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        
+        // Normalized coordinates
+        const normalizedX = (screenX - centerX) / zoom;
+        const normalizedY = (screenY - centerY) / zoom;
+        
+        // Isometric to cartesian (approximate)
+        const cartX = (normalizedX / 0.7 + normalizedY / 0.4) / 2;
+        const cartZ = (normalizedY / 0.4 - normalizedX / 0.7) / 2;
+        const cartY = -normalizedY / zoom;
+        
+        // Apply rotation
+        const rotationRad = (viewRotationY * Math.PI) / 180;
+        const x = cartX * Math.cos(-rotationRad) - cartZ * Math.sin(-rotationRad);
+        const newZ = cartX * Math.sin(-rotationRad) + cartZ * Math.cos(-rotationRad);
+        
+        // Apply camera position
+        return {
+            x: x + cameraPosition.x,
+            y: cartY + cameraPosition.y,
+            z
+        };
+    }
+
+    function draw2DObject(object: GameObject) {
+        const props = object.properties as ObjectProperties2D;
+        ctx.fillStyle = props.color;
+        
+        switch (props.shape) {
+            case 'rectangle':
+                ctx.fillRect(
+                    object.position.x - props.width / 2,
+                    object.position.y - props.height / 2,
+                    props.width,
+                    props.height
+                );
+                break;
+                
+            case 'circle':
+                ctx.beginPath();
+                ctx.arc(
+                    object.position.x,
+                    object.position.y,
+                    props.width / 2,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+                break;
+                
+            case 'triangle':
+                const x = object.position.x;
+                const y = object.position.y;
+                const w = props.width;
+                const h = props.height;
+                
+                ctx.beginPath();
+                ctx.moveTo(x, y - h/2);
+                ctx.lineTo(x - w/2, y + h/2);
+                ctx.lineTo(x + w/2, y + h/2);
+                ctx.closePath();
+                ctx.fill();
+                break;
+        }
+
+        // Add entity name if it exists
+        if (object.entity) {
+            ctx.fillStyle = 'white';
+            ctx.font = '12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(
+                object.entity.displayName,
+                object.position.x,
+                object.position.y - props.height / 2 - 5
+            );
+        }
+
+        // Draw selection outline if object is being dragged
+        if (draggedObject?.id === object.id) {
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(
+                object.position.x - props.width / 2 - 2,
+                object.position.y - props.height / 2 - 2,
+                props.width + 4,
+                props.height + 4
+            );
+        }
+    }
+    
+    function draw3DObject(object: GameObject) {
+        const props = object.properties as ObjectProperties3D;
+        const pos = object.position;
+        
+        if (isometric) {
+            // Isometric projection
+            const screenPos = projectIsometric(pos);
+            
+            // Draw based on shape
+            switch (props.shape) {
+                case 'cube':
+                    drawIsometricCube(screenPos.x, screenPos.y, props.width, props.height, props.depth, props.color, object);
+                    break;
+                case 'sphere':
+                    drawIsometricSphere(screenPos.x, screenPos.y, props.width, props.height, props.color, object);
+                    break;
+                case 'cylinder':
+                    drawIsometricCylinder(screenPos.x, screenPos.y, props.width, props.height, props.color, object);
+                    break;
+                case 'cone':
+                    drawIsometricCone(screenPos.x, screenPos.y, props.width, props.height, props.color, object);
+                    break;
+            }
+        } else {
+            // Top-down view
+            ctx.fillStyle = props.color;
+            
+            // Draw from top view
+            switch (props.shape) {
+                case 'cube':
+                case 'cylinder':
+                    ctx.fillRect(
+                        pos.x - props.width / 2,
+                        pos.y - props.depth / 2,
+                        props.width,
+                        props.depth
+                    );
+                    break;
+                case 'sphere':
+                case 'cone':
+                    const radius = Math.max(props.width, props.depth) / 2;
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    break;
+            }
+        }
+        
+        // Add entity name if it exists
+        if (object.entity) {
+            ctx.fillStyle = 'white';
+            ctx.font = '12px sans-serif';
+            ctx.textAlign = 'center';
+            const textY = isometric ? 
+                projectIsometric({...pos, y: pos.y - props.height / 2 - 15}).y : 
+                pos.y - props.depth / 2 - 10;
+            const textX = isometric ?
+                projectIsometric({...pos, y: pos.y - props.height / 2 - 15}).x :
+                pos.x;
+                
+            ctx.fillText(
+                object.entity.displayName,
+                textX,
+                textY
+            );
+            
+            // For enemies that drop Eye of Elder, add indicator
+            if (object.entity.entityType === 'enemy' && 
+                object.entity.drops && 
+                object.entity.drops.some(drop => drop.itemId === 'eye_of_elder')) {
+                ctx.fillText(
+                    "Drops: Eye of Elder",
+                    textX,
+                    textY + 15
+                );
+            }
+        }
+    }
+    
+    function drawIsometricCube(x: number, y: number, width: number, height: number, depth: number, color: string, object: GameObject) {
+        const w = width * zoom * 0.7;
+        const h = height * zoom;
+        const d = depth * zoom * 0.7;
+        
+        // Calculate coordinates for the cube
+        const points = {
+            // Front face (bottom left, bottom right, top right, top left)
+            frontBL: { x: x - w/2, y: y + h/2 },
+            frontBR: { x: x + w/2, y: y + h/2 },
+            frontTR: { x: x + w/2, y: y - h/2 },
+            frontTL: { x: x - w/2, y: y - h/2 },
+            
+            // Back face (same order)
+            backBL: { x: x - w/2 - d*0.3, y: y + h/2 - d*0.3 },
+            backBR: { x: x + w/2 - d*0.3, y: y + h/2 - d*0.3 },
+            backTR: { x: x + w/2 - d*0.3, y: y - h/2 - d*0.3 },
+            backTL: { x: x - w/2 - d*0.3, y: y - h/2 - d*0.3 }
+        };
+        
+        // Adjust colors for different faces
+        const topColor = shadeColor(color, 30);
+        const rightColor = shadeColor(color, -15);
+        const frontColor = color;
+        
+        // Draw the three visible faces of the cube
+        
+        // Top face
+        ctx.fillStyle = topColor;
+        ctx.beginPath();
+        ctx.moveTo(points.frontTL.x, points.frontTL.y);
+        ctx.lineTo(points.frontTR.x, points.frontTR.y);
+        ctx.lineTo(points.backTR.x, points.backTR.y);
+        ctx.lineTo(points.backTL.x, points.backTL.y);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Right face
+        ctx.fillStyle = rightColor;
+        ctx.beginPath();
+        ctx.moveTo(points.frontTR.x, points.frontTR.y);
+        ctx.lineTo(points.frontBR.x, points.frontBR.y);
+        ctx.lineTo(points.backBR.x, points.backBR.y);
+        ctx.lineTo(points.backTR.x, points.backTR.y);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Front face
+        ctx.fillStyle = frontColor;
+        ctx.beginPath();
+        ctx.moveTo(points.frontBL.x, points.frontBL.y);
+        ctx.lineTo(points.frontBR.x, points.frontBR.y);
+        ctx.lineTo(points.frontTR.x, points.frontTR.y);
+        ctx.lineTo(points.frontTL.x, points.frontTL.y);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Draw selection outline if object is being dragged
+        if (draggedObject?.id === object.id) {
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            
+            // Outline the visible faces
+            ctx.beginPath();
+            // Front face
+            ctx.moveTo(points.frontBL.x, points.frontBL.y);
+            ctx.lineTo(points.frontBR.x, points.frontBR.y);
+            ctx.lineTo(points.frontTR.x, points.frontTR.y);
+            ctx.lineTo(points.frontTL.x, points.frontTL.y);
+            ctx.closePath();
+            ctx.stroke();
+            
+            // Top face
+            ctx.beginPath();
+            ctx.moveTo(points.frontTL.x, points.frontTL.y);
+            ctx.lineTo(points.frontTR.x, points.frontTR.y);
+            ctx.lineTo(points.backTR.x, points.backTR.y);
+            ctx.lineTo(points.backTL.x, points.backTL.y);
+            ctx.closePath();
+            ctx.stroke();
+            
+            // Right face
+            ctx.beginPath();
+            ctx.moveTo(points.frontTR.x, points.frontTR.y);
+            ctx.lineTo(points.frontBR.x, points.frontBR.y);
+            ctx.lineTo(points.backBR.x, points.backBR.y);
+            ctx.lineTo(points.backTR.x, points.backTR.y);
+            ctx.closePath();
+            ctx.stroke();
+        }
+    }
+    
+    function drawIsometricSphere(x: number, y: number, width: number, height: number, color: string, object: GameObject) {
+        const radius = width * zoom * 0.4;
+        
+        // Draw the sphere (as a circle with a gradient)
+        const gradient = ctx.createRadialGradient(
+            x - radius * 0.2, 
+            y - radius * 0.2, 
+            0,
+            x, 
+            y, 
+            radius
+        );
+        gradient.addColorStop(0, shadeColor(color, 30));
+        gradient.addColorStop(1, shadeColor(color, -20));
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Add a highlight
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.beginPath();
+        ctx.arc(x - radius * 0.3, y - radius * 0.3, radius * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Draw selection outline if object is being dragged
+        if (draggedObject?.id === object.id) {
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(x, y, radius + 2, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+    }
+    
+    function drawIsometricCylinder(x: number, y: number, width: number, height: number, color: string, object: GameObject) {
+        const w = width * zoom * 0.5;
+        const h = height * zoom;
+        
+        // Draw the cylinder's top ellipse
+        ctx.fillStyle = shadeColor(color, 30);
+        ctx.beginPath();
+        ctx.ellipse(x, y - h/2, w, w * 0.6, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Draw the cylinder's body
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.ellipse(x, y + h/2, w, w * 0.6, 0, Math.PI, Math.PI * 2);
+        ctx.lineTo(x + w, y - h/2);
+        ctx.ellipse(x, y - h/2, w, w * 0.6, 0, 0, Math.PI);
+        ctx.lineTo(x - w, y + h/2);
+        ctx.fill();
+        
+        // Draw the cylinder's bottom ellipse
+        ctx.fillStyle = shadeColor(color, -15);
+        ctx.beginPath();
+        ctx.ellipse(x, y + h/2, w, w * 0.6, 0, 0, Math.PI);
+        ctx.fill();
+        
+        // Draw selection outline if object is being dragged
+        if (draggedObject?.id === object.id) {
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            
+            // Top ellipse
+            ctx.beginPath();
+            ctx.ellipse(x, y - h/2, w + 2, (w + 2) * 0.6, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Bottom ellipse
+            ctx.beginPath();
+            ctx.ellipse(x, y + h/2, w + 2, (w + 2) * 0.6, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Connecting lines
+            ctx.beginPath();
+            ctx.moveTo(x - w - 2, y - h/2);
+            ctx.lineTo(x - w - 2, y + h/2);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(x + w + 2, y - h/2);
+            ctx.lineTo(x + w + 2, y + h/2);
+            ctx.stroke();
+        }
+    }
+    
+    function drawIsometricCone(x: number, y: number, width: number, height: number, color: string, object: GameObject) {
+        const w = width * zoom * 0.5;
+        const h = height * zoom;
+        
+        // Draw the cone's base
+        ctx.fillStyle = shadeColor(color, -15);
+        ctx.beginPath();
+        ctx.ellipse(x, y + h/2, w, w * 0.6, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Draw the cone's body
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.ellipse(x, y + h/2, w, w * 0.6, 0, 0, Math.PI * 2);
+        ctx.moveTo(x + w, y + h/2);
+        ctx.lineTo(x, y - h/2);
+        ctx.lineTo(x - w, y + h/2);
+        ctx.fill();
+        
+        // Draw selection outline if object is being dragged
+        if (draggedObject?.id === object.id) {
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            
+            // Base ellipse
+            ctx.beginPath();
+            ctx.ellipse(x, y + h/2, w + 2, (w + 2) * 0.6, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Connecting lines to tip
+            ctx.beginPath();
+            ctx.moveTo(x - w - 2, y + h/2);
+            ctx.lineTo(x, y - h/2);
+            ctx.lineTo(x + w + 2, y + h/2);
+            ctx.stroke();
+        }
+    }
+    
+    // Helper to adjust color brightness
+    function shadeColor(color: string, percent: number) {
+        const num = parseInt(color.replace('#', ''), 16);
+        const amt = Math.round(2.55 * percent);
+        const R = (num >> 16) + amt;
+        const G = (num >> 8 & 0x00FF) + amt;
+        const B = (num & 0x0000FF) + amt;
+        return '#' + (
+            0x1000000 +
+            (R < 255 ? (R < 0 ? 0 : R) : 255) * 0x10000 +
+            (G < 255 ? (G < 0 ? 0 : G) : 255) * 0x100 +
+            (B < 255 ? (B < 0 ? 0 : B) : 255)
+        ).toString(16).slice(1);
+    }
+    
+    function drawEntityInfo(object: GameObject) {
+        if (!object.entity) return;
+        
+        const entity = object.entity;
+        let pos;
+        
+        if (object.type === '2d') {
+            const props = object.properties as ObjectProperties2D;
+            pos = {
+                x: object.position.x,
+                y: object.position.y + props.height / 2 + 15
+            };
+        } else {
+            if (isometric) {
+                const screenPos = projectIsometric(object.position);
+                const props = object.properties as ObjectProperties3D;
+                pos = {
+                    x: screenPos.x,
+                    y: screenPos.y + (props.height * zoom) / 2 + 15
+                };
+            } else {
+                const props = object.properties as ObjectProperties3D;
+                pos = {
+                    x: object.position.x,
+                    y: object.position.y + props.depth / 2 + 15
+                };
+            }
+        }
+        
+        // Draw entity type indicator
+        ctx.fillStyle = '#333';
+        ctx.globalAlpha = 0.7;
+        ctx.fillRect(pos.x - 50, pos.y, 100, entity.entityType === 'enemy' && entity.combatStats ? 60 : 20);
+        ctx.globalAlpha = 1;
+        
+        ctx.fillStyle = getEntityTypeColor(entity);
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(entity.entityType.toUpperCase(), pos.x, pos.y + 14);
+        
+        // Draw combat stats for enemies and heroes
+        if ((entity.entityType === 'enemy' || entity.entityType === 'hero') && entity.combatStats) {
+            ctx.fillStyle = 'white';
+            ctx.font = '10px sans-serif';
+            ctx.fillText(
+                `HP: ${entity.combatStats.health} | ATK: ${entity.combatStats.attack}`,
+                pos.x,
+                pos.y + 30
+            );
+            ctx.fillText(
+                `DEF: ${entity.combatStats.defense} | SPD: ${entity.combatStats.speed}`,
+                pos.x,
+                pos.y + 44
+            );
+        }
+    }
+    
+    function getEntityTypeColor(entity: EntityProperties): string {
+        switch(entity.entityType) {
+            case 'hero': return '#4287f5'; // Blue
+            case 'enemy': return '#f54242'; // Red
+            case 'npc': return '#42f59e'; // Green
+            case 'item': return '#f5d742'; // Yellow
+            case 'portal': return '#9b42f5'; // Purple
+            default: return 'white';
+        }
+    }
+    
+    onMount(() => {
+        ctx = canvas.getContext('2d')!;
+        
+        // Make canvas focusable and add keyboard event handlers
+        canvas.tabIndex = 0;
+        canvas.addEventListener('keydown', handleKeyDown);
+        
+        const gameLoop = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw grid
+            drawGrid();
+            
+            // Sort objects by Y position for proper layering in isometric view
+            const sortedObjects = [...scene.objects].sort((a, b) => {
+                if (isometric) {
+                    return a.position.y - b.position.y;
+                }
+                return 0; // No sorting needed for 2D top-down view
+            });
+            
+            // Draw all objects
+            sortedObjects.forEach(object => {
+                if (object.type === '2d') {
+                    draw2DObject(object);
+                } else {
+                    draw3DObject(object);
+                }
+                
+                // If object is selected, show additional info
+                if (draggedObject?.id === object.id) {
+                    drawEntityInfo(object);
+                }
+            });
+            
+            // Draw HUD information
+            drawHUD();
+            
+            requestAnimationFrame(gameLoop);
+        };
+        
+        gameLoop();
+    });
+    
+    function drawGrid() {
+        const gridSize = 50 * zoom;
+        const xOffset = (canvas.width / 2) % gridSize;
+        const yOffset = (canvas.height / 2) % gridSize;
+        
+        ctx.strokeStyle = 'rgba(100, 100, 100, 0.2)';
+        ctx.lineWidth = 1;
+        
+        // Draw horizontal grid lines
+        for (let y = yOffset; y < canvas.height; y += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(canvas.width, y);
+            ctx.stroke();
+        }
+        
+        // Draw vertical grid lines
+        for (let x = xOffset; x < canvas.width; x += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, canvas.height);
+            ctx.stroke();
+        }
+    }
+    
+    function drawHUD() {
+        // Draw mode, zoom level, and controls info
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(10, 10, 200, 80);
+        
+        ctx.fillStyle = 'white';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'left';
+        
+        ctx.fillText(`Mode: ${scene.type.toUpperCase()} ${isometric ? '(Isometric)' : '(Top-Down)'}`, 20, 30);
+        ctx.fillText(`Zoom: ${zoom.toFixed(1)}x`, 20, 50);
+        ctx.fillText(`Rotation: ${viewRotationY}°`, 20, 70);
+        
+        // Draw controls help at bottom
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(10, canvas.height - 60, 280, 50);
+        
+        ctx.fillStyle = 'white';
+        ctx.fillText('Controls: Mouse Wheel = Zoom, Arrow Keys = Rotate', 20, canvas.height - 40);
+        ctx.fillText('R = Reset View, Click & Drag = Move Objects', 20, canvas.height - 20);
+    }
+</script>
+
+<div class="canvas-container">
+    <canvas
+        bind:this={canvas}
+        width={800}
+        height={600}
+        class="game-canvas"
+        on:mousedown={handleMouseDown}
+        on:mousemove={handleMouseMove}
+        on:mouseup={handleMouseUp}
+        on:mouseleave={handleMouseUp}
+        on:wheel={handleWheel}
+    >
+    </canvas>
+    
+    <div class="canvas-controls">
+        <button 
+            on:click={() => isometric = !isometric} 
+            class="view-toggle"
+            title={isometric ? "Switch to top-down view" : "Switch to isometric view"}
+        >
+            {isometric ? "Top-Down View" : "Isometric View"}
+        </button>
+    </div>
+</div>
+
+<style>
+    .canvas-container {
+        position: relative;
+        width: 100%;
+        height: 100%;
+    }
+
+    .game-canvas {
+        border: 1px solid #ccc;
+        background: #f0f0f0;
+        cursor: grab;
+        display: block;
+        width: 100%;
+        height: 100%;
+    }
+
+    .game-canvas:active {
+        cursor: grabbing;
+    }
+    
+    .game-canvas:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px #4c7dff;
+    }
+    
+    .canvas-controls {
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        display: flex;
+        gap: 10px;
+    }
+    
+    .view-toggle {
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+    }
+    
+    .view-toggle:hover {
+        background: rgba(0, 0, 0, 0.9);
+    }
+</style>

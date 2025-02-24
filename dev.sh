@@ -57,22 +57,9 @@ run_tests() {
     echo "Creating screenshot directory: ${screenshot_dir}"
     mkdir -p "${screenshot_dir}"
     
-    echo "Starting dev server..."
-    npm run dev &
-    local dev_server_pid=$!
-    
-    echo "Waiting 5 seconds for server startup..."
-    sleep 5
-    
-    echo "Running single test for debugging..."
-    npx playwright test -g "should create a new scene" --headed \
-        --trace on \
-        --output="${screenshot_dir}"
+    echo "Running all tests..."
+    npx playwright test -g "should create and select 2D objects"
     local test_result=$?
-    
-    echo "Shutting down dev server..."
-    pkill -P $dev_server_pid 2>/dev/null
-    kill $dev_server_pid 2>/dev/null
     
     # Keep only the 3 most recent screenshot directories
     ls -t test_screenshots | tail -n +4 | xargs -I {} rm -rf "test_screenshots/{}"

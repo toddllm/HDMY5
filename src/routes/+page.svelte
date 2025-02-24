@@ -1,12 +1,14 @@
 <script lang="ts">
     import GameCanvas from '$lib/components/GameCanvas.svelte';
     import ObjectCreationDialog from '$lib/components/ObjectCreationDialog.svelte';
+    import EntityCreationDialog from '$lib/components/EntityCreationDialog.svelte';
     import { activeScene, createScene, scenes, updateScene, deleteScene, initializeStore, selectedObject } from '$lib/stores/gameStore';
-    import type { GameObject, GameScene } from '$lib/types/GameTypes';
+    import type { GameObject, GameScene, EntityProperties, ObjectProperties2D, ObjectProperties3D } from '$lib/types/GameTypes';
     import { onMount } from 'svelte';
     
     let currentMode: '2d' | '3d' = '2d';
     let showObjectDialog = false;
+    let showEntityDialog = false;
     
     onMount(async () => {
         await initializeStore();
@@ -25,7 +27,23 @@
         showObjectDialog = true;
     }
     
+    function handleAddEntity() {
+        showEntityDialog = true;
+    }
+    
     async function handleObjectCreate(event: CustomEvent<GameObject>) {
+        if (!$activeScene) return;
+        
+        const updatedScene = {
+            ...$activeScene,
+            objects: [...$activeScene.objects, event.detail]
+        };
+        
+        await updateScene(updatedScene);
+        activeScene.set(updatedScene);
+    }
+    
+    async function handleEntityCreate(event: CustomEvent<GameObject>) {
         if (!$activeScene) return;
         
         const updatedScene = {
@@ -57,6 +75,12 @@
             handleSceneSelect(scene);
         }
     }
+    
+    // Helper for displaying object properties based on type
+    $: objectProperties = $selectedObject?.properties;
+    $: isEntity = $selectedObject?.type === 'entity';
+    $: is2DObject = $selectedObject?.type === '2d';
+    $: is3DObject = $selectedObject?.type === '3d';
 </script>
 
 <div class="editor-layout">
@@ -66,6 +90,9 @@
             <button type="button" on:click={handleNewScene}>New Scene</button>
             <button type="button" on:click={handleAddObject} disabled={!$activeScene}>
                 Add Object
+            </button>
+            <button type="button" on:click={handleAddEntity} disabled={!$activeScene}>
+                Add Entity
             </button>
             <label class="mode-select">
                 Mode:
@@ -110,7 +137,11 @@
                                     <ul class="object-list" role="list">
                                         {#each scene.objects as object}
                                             <li class="object-item">
-                                                {object.name} ({object.properties.shape})
+                                                {#if object.type === 'entity'}
+                                                    {object.name} ({(object.properties as EntityProperties).entityType})
+                                                {:else}
+                                                    {object.name} ({(object.properties as ObjectProperties2D | ObjectProperties3D).shape})
+                                                {/if}
                                             </li>
                                         {/each}
                                     </ul>
@@ -141,33 +172,128 @@
                             on:input={() => updateScene($activeScene!)}
                         />
                     </div>
-                    <div class="property">
-                        <label for="object-color">Color:</label>
-                        <input 
-                            id="object-color"
-                            type="color" 
-                            bind:value={$selectedObject.properties.color}
-                            on:input={() => updateScene($activeScene!)}
-                        />
-                    </div>
-                    <div class="property">
-                        <label for="object-width">Width:</label>
-                        <input 
-                            id="object-width"
-                            type="number" 
-                            bind:value={$selectedObject.properties.width}
-                            on:input={() => updateScene($activeScene!)}
-                        />
-                    </div>
-                    <div class="property">
-                        <label for="object-height">Height:</label>
-                        <input 
-                            id="object-height"
-                            type="number" 
-                            bind:value={$selectedObject.properties.height}
-                            on:input={() => updateScene($activeScene!)}
-                        />
-                    </div>
+                    
+                    {#if isEntity}
+                        <!-- Entity properties -->
+                        <div class="property">
+                            <label for="entity-type">Entity Type:</label>
+                            <input 
+                                id="entity-type"
+                                type="text" 
+                                value={(objectProperties as EntityProperties).entityType}
+                                readonly
+                            />
+                        </div>
+                        <div class="property">
+                            <label for="entity-health">Health:</label>
+                            <input 
+                                id="entity-health"
+                                type="number" 
+                                bind:value={(objectProperties as EntityProperties).health}
+                                on:input={() => updateScene($activeScene!)}
+                            />
+                        </div>
+                        <div class="property">
+                            <label for="entity-speed">Speed:</label>
+                            <input 
+                                id="entity-speed"
+                                type="number" 
+                                bind:value={(objectProperties as EntityProperties).speed}
+                                on:input={() => updateScene($activeScene!)}
+                            />
+                        </div>
+                        {#if (objectProperties as EntityProperties).damage !== undefined}
+                            <div class="property">
+                                <label for="entity-damage">Damage:</label>
+                                <input 
+                                    id="entity-damage"
+                                    type="number" 
+                                    bind:value={(objectProperties as EntityProperties).damage}
+                                    on:input={() => updateScene($activeScene!)}
+                                />
+                            </div>
+                        {/if}
+                        {#if (objectProperties as EntityProperties).defense !== undefined}
+                            <div class="property">
+                                <label for="entity-defense">Defense:</label>
+                                <input 
+                                    id="entity-defense"
+                                    type="number" 
+                                    bind:value={(objectProperties as EntityProperties).defense}
+                                    on:input={() => updateScene($activeScene!)}
+                                />
+                            </div>
+                        {/if}
+                        <div class="property">
+                            <label for="entity-description">Description:</label>
+                            <textarea 
+                                id="entity-description"
+                                bind:value={(objectProperties as EntityProperties).description}
+                                on:input={() => updateScene($activeScene!)}
+                            ></textarea>
+                        </div>
+                        <div class="property checkbox">
+                            <label>
+                                <input 
+                                    type="checkbox" 
+                                    bind:checked={(objectProperties as EntityProperties).isHostile}
+                                    on:change={() => updateScene($activeScene!)}
+                                />
+                                Hostile
+                            </label>
+                        </div>
+                        <div class="property checkbox">
+                            <label>
+                                <input 
+                                    type="checkbox" 
+                                    bind:checked={(objectProperties as EntityProperties).interactable}
+                                    on:change={() => updateScene($activeScene!)}
+                                />
+                                Interactable
+                            </label>
+                        </div>
+                    {:else}
+                        <!-- 2D/3D object properties -->
+                        <div class="property">
+                            <label for="object-color">Color:</label>
+                            <input 
+                                id="object-color"
+                                type="color" 
+                                bind:value={(objectProperties as ObjectProperties2D | ObjectProperties3D).color}
+                                on:input={() => updateScene($activeScene!)}
+                            />
+                        </div>
+                        <div class="property">
+                            <label for="object-width">Width:</label>
+                            <input 
+                                id="object-width"
+                                type="number" 
+                                bind:value={(objectProperties as ObjectProperties2D | ObjectProperties3D).width}
+                                on:input={() => updateScene($activeScene!)}
+                            />
+                        </div>
+                        <div class="property">
+                            <label for="object-height">Height:</label>
+                            <input 
+                                id="object-height"
+                                type="number" 
+                                bind:value={(objectProperties as ObjectProperties2D | ObjectProperties3D).height}
+                                on:input={() => updateScene($activeScene!)}
+                            />
+                        </div>
+                        {#if is3DObject}
+                            <div class="property">
+                                <label for="object-depth">Depth:</label>
+                                <input 
+                                    id="object-depth"
+                                    type="number" 
+                                    bind:value={(objectProperties as ObjectProperties3D).depth}
+                                    on:input={() => updateScene($activeScene!)}
+                                />
+                            </div>
+                        {/if}
+                    {/if}
+                    
                     <div class="property">
                         <label>Position:</label>
                         <div class="position-inputs">
@@ -189,39 +315,60 @@
                                     on:input={() => updateScene($activeScene!)}
                                 />
                             </div>
+                            <div>
+                                <label for="pos-z">Z:</label>
+                                <input 
+                                    id="pos-z"
+                                    type="number" 
+                                    bind:value={$selectedObject.position.z}
+                                    on:input={() => updateScene($activeScene!)}
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>
             {:else if $activeScene}
-                <div class="properties-form" role="form" aria-labelledby="properties-heading">
+                <div class="scene-properties">
                     <div class="property">
                         <label for="scene-name">Scene Name:</label>
                         <input 
                             id="scene-name"
                             type="text" 
                             bind:value={$activeScene.name}
-                            on:input={() => updateScene($activeScene)}
+                            on:input={() => updateScene($activeScene!)}
                         />
                     </div>
                     <div class="property">
-                        <label id="scene-type-label">Type:</label>
-                        <span aria-labelledby="scene-type-label">{$activeScene.type}</span>
-                    </div>
-                    <div class="property">
-                        <label id="object-count-label">Objects:</label>
-                        <span aria-labelledby="object-count-label">{$activeScene.objects.length}</span>
+                        <label for="scene-type">Scene Type:</label>
+                        <select 
+                            id="scene-type" 
+                            bind:value={$activeScene.type}
+                            on:change={() => updateScene($activeScene!)}
+                        >
+                            <option value="2d">2D</option>
+                            <option value="3d">3D</option>
+                        </select>
                     </div>
                 </div>
+            {:else}
+                <p>No scene selected</p>
             {/if}
         </aside>
     </main>
-</div>
+    
+    <ObjectCreationDialog 
+        bind:isOpen={showObjectDialog}
+        mode={currentMode}
+        on:close={() => (showObjectDialog = false)}
+        on:create={handleObjectCreate}
+    />
 
-<ObjectCreationDialog 
-    bind:isOpen={showObjectDialog}
-    mode={$activeScene?.type ?? '2d'}
-    on:create={handleObjectCreate}
-/>
+    <EntityCreationDialog
+        bind:isOpen={showEntityDialog}
+        on:close={() => (showEntityDialog = false)}
+        on:create={handleEntityCreate}
+    />
+</div>
 
 <style>
     .editor-layout {
@@ -431,5 +578,26 @@
         padding: 0;
         border: none;
         background: none;
+    }
+
+    textarea {
+        width: 100%;
+        padding: 0.5rem;
+        background: #333;
+        border: 1px solid #444;
+        color: white;
+        border-radius: 4px;
+        min-height: 80px;
+        resize: vertical;
+    }
+    
+    .property.checkbox {
+        display: flex;
+        align-items: center;
+    }
+    
+    .property.checkbox input {
+        width: auto;
+        margin-right: 0.5rem;
     }
 </style>

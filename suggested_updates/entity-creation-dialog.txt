@@ -1,0 +1,680 @@
+<script lang="ts">
+    import { createEventDispatcher } from 'svelte';
+    import type { 
+        GameObject, 
+        EntityType, 
+        CharacterTemplate, 
+        ItemType,
+        EntityProperties,
+        CombatStats,
+        ItemDrop,
+        ObjectProperties3D,
+        Shape3D
+    } from '$lib/types/GameTypes';
+    import { 
+        createHero, 
+        createEnemy, 
+        createItem, 
+        createPortal 
+    } from '$lib/types/GameTypes';
+
+    export let isOpen = false;
+
+    const dispatch = createEventDispatcher<{
+        close: void;
+        create: GameObject;
+    }>();
+
+    // Entity selection
+    let entityType: EntityType = 'hero';
+    let characterTemplate: CharacterTemplate = 'fred';
+    let itemType: ItemType = 'weapon';
+    
+    // Visual properties
+    let shape: Shape3D = 'cube';
+    let width = 50;
+    let height = 80;
+    let depth = 50;
+    let color = '#ff0000';
+    
+    // Combat stats
+    let health = 100;
+    let attack = 10;
+    let defense = 5;
+    let speed = 5;
+    let specialAbility = '';
+    
+    // Item drops (for enemies)
+    let dropEyeOfElder = false;
+    let eyeDropRate = 10; // Default 10%
+    let drops: ItemDrop[] = [];
+    
+    // Interactive properties
+    let isInteractable = false;
+    let displayName = '';
+    let description = '';
+    
+    // Reset form when entity type changes
+    function handleEntityTypeChange() {
+        switch(entityType) {
+            case 'hero':
+                characterTemplate = 'fred';
+                health = 100;
+                attack = 10;
+                defense = 5;
+                speed = 5;
+                color = '#4287f5'; // Blue
+                break;
+            case 'enemy':
+                characterTemplate = 'skeleton';
+                health = 50;
+                attack = 5;
+                defense = 3;
+                speed = 3;
+                color = '#f54242'; // Red
+                break;
+            case 'npc':
+                characterTemplate = 'elda_fairy';
+                isInteractable = true;
+                color = '#42f59e'; // Green
+                break;
+            case 'item':
+                itemType = 'weapon';
+                color = '#f5d742'; // Yellow
+                width = 30;
+                height = 30;
+                depth = 30;
+                break;
+            case 'portal':
+                color = '#9b42f5'; // Purple
+                width = 80;
+                height = 120;
+                depth = 80;
+                break;
+        }
+    }
+    
+    // Update form when template changes
+    function handleTemplateChange() {
+        let entityProps: EntityProperties;
+        
+        if (entityType === 'hero' || entityType === 'npc') {
+            entityProps = createHero(characterTemplate);
+        } else if (entityType === 'enemy') {
+            entityProps = createEnemy(characterTemplate);
+        } else if (entityType === 'item') {
+            entityProps = createItem(itemType);
+        } else {
+            entityProps = createPortal();
+        }
+        
+        // Set display values
+        displayName = entityProps.displayName;
+        description = entityProps.description || '';
+        
+        // Set combat stats if they exist
+        if (entityProps.combatStats) {
+            health = entityProps.combatStats.health;
+            attack = entityProps.combatStats.attack;
+            defense = entityProps.combatStats.defense;
+            speed = entityProps.combatStats.speed;
+            specialAbility = entityProps.combatStats.specialAbility || '';
+        }
+        
+        // Set visual properties based on template
+        if (characterTemplate === 'fred' || characterTemplate === 'tom') {
+            shape = 'cube';
+            width = 40;
+            height = 80;
+            depth = 40;
+        } else if (characterTemplate === 'casta') {
+            shape = 'cone';
+            width = 50;
+            height = 90;
+            depth = 50;
+            color = '#9b42f5'; // Purple for wizard
+        } else if (characterTemplate === 'elda_fairy') {
+            shape = 'sphere';
+            width = 20;
+            height = 20;
+            depth = 20;
+            color = '#f542f2'; // Pink for fairy
+        } else if (characterTemplate === 'dr_nikic') {
+            shape = 'cylinder';
+            width = 60;
+            height = 100;
+            depth = 60;
+            color = '#7a7a7a'; // Gray for robot
+        } else if (characterTemplate === 'skeleton') {
+            shape = 'cube';
+            width = 40;
+            height = 70;
+            depth = 30;
+            color = '#e8e8e8'; // White for skeleton
+        } else if (characterTemplate === 'zombie') {
+            shape = 'cube';
+            width = 45;
+            height = 75;
+            depth = 35;
+            color = '#6b8e23'; // Olive green for zombie
+        } else if (characterTemplate === 'goblin') {
+            shape = 'cube';
+            width = 30;
+            height = 50;
+            depth = 30;
+            color = '#2e8b57'; // Sea green for goblin
+        } else if (characterTemplate === 'dragon') {
+            shape = 'cube';
+            width = 100;
+            height = 70;
+            depth = 150;
+            color = '#8b0000'; // Dark red for dragon
+        } else if (characterTemplate === 'ghost') {
+            shape = 'cylinder';
+            width = 40;
+            height = 80;
+            depth = 40;
+            color = '#f8f8ff'; // Ghost white
+        }
+        
+        // Handle eye of elder drops for enemies
+        if (entityType === 'enemy') {
+            dropEyeOfElder = false;
+            eyeDropRate = 10;
+        }
+        
+        if (itemType === 'eye_of_elder') {
+            shape = 'sphere';
+            width = 25;
+            height = 25;
+            depth = 25;
+            color = '#800080'; // Purple for Eye of Elder
+        }
+    }
+
+    function handleSubmit() {
+        let entityProps: EntityProperties;
+        
+        // Create base entity properties
+        if (entityType === 'hero' || entityType === 'npc') {
+            entityProps = createHero(characterTemplate);
+        } else if (entityType === 'enemy') {
+            entityProps = createEnemy(characterTemplate);
+        } else if (entityType === 'item') {
+            entityProps = createItem(itemType);
+        } else {
+            entityProps = createPortal();
+        }
+        
+        // Update with form values
+        entityProps.displayName = displayName;
+        entityProps.description = description;
+        
+        // Set combat stats if applicable
+        if (entityType === 'hero' || entityType === 'enemy') {
+            entityProps.combatStats = {
+                health,
+                attack,
+                defense,
+                speed,
+                specialAbility: specialAbility || undefined
+            };
+        }
+        
+        // Set interactable for NPCs
+        if (entityType === 'npc') {
+            entityProps.interactable = isInteractable;
+        }
+        
+        // Handle drops for enemies
+        if (entityType === 'enemy') {
+            entityProps.drops = [];
+            
+            if (dropEyeOfElder) {
+                entityProps.drops.push({
+                    itemId: 'eye_of_elder',
+                    dropRate: eyeDropRate,
+                    minQuantity: 1,
+                    maxQuantity: 1
+                });
+            }
+        }
+        
+        // Create 3D object properties
+        const properties: ObjectProperties3D = {
+            width,
+            height,
+            depth,
+            color,
+            shape
+        };
+
+        // Create the game object
+        const object: GameObject = {
+            id: crypto.randomUUID(),
+            name: entityProps.displayName,
+            position: { x: 400, y: 300, z: 0 },
+            rotation: { x: 0, y: 0, z: 0 },
+            scale: { x: 1, y: 1, z: 1 },
+            type: '3d',
+            properties,
+            entity: entityProps,
+            components: []
+        };
+
+        console.log('Creating entity:', object);
+        dispatch('create', object);
+        handleClose();
+    }
+
+    function handleClose() {
+        dispatch('close');
+        isOpen = false;
+        resetForm();
+    }
+    
+    function resetForm() {
+        entityType = 'hero';
+        characterTemplate = 'fred';
+        itemType = 'weapon';
+        shape = 'cube';
+        width = 50;
+        height = 80;
+        depth = 50;
+        color = '#ff0000';
+        health = 100;
+        attack = 10;
+        defense = 5;
+        speed = 5;
+        specialAbility = '';
+        dropEyeOfElder = false;
+        eyeDropRate = 10;
+        isInteractable = false;
+        displayName = '';
+        description = '';
+    }
+</script>
+
+{#if isOpen}
+    <div class="dialog-overlay" on:click={handleClose}>
+        <div class="dialog" on:click|stopPropagation>
+            <h2>Create Game Entity</h2>
+            <form on:submit|preventDefault={handleSubmit}>
+                <!-- Entity Type Selection -->
+                <div class="form-group">
+                    <label for="entity-type">Entity Type:</label>
+                    <select 
+                        id="entity-type" 
+                        bind:value={entityType}
+                        on:change={handleEntityTypeChange}
+                    >
+                        <option value="hero">Hero</option>
+                        <option value="enemy">Enemy</option>
+                        <option value="npc">NPC</option>
+                        <option value="item">Item</option>
+                        <option value="portal">Portal</option>
+                    </select>
+                </div>
+
+                <!-- Template Selection based on entity type -->
+                {#if entityType === 'hero' || entityType === 'npc'}
+                    <div class="form-group">
+                        <label for="character-template">Character:</label>
+                        <select 
+                            id="character-template" 
+                            bind:value={characterTemplate}
+                            on:change={handleTemplateChange}
+                        >
+                            <option value="fred">Fred the Brave</option>
+                            <option value="tom">Tom the Agile</option>
+                            <option value="casta">Casta the Wizard</option>
+                            {#if entityType === 'npc'}
+                                <option value="elda_fairy">Elda the Fairy</option>
+                            {/if}
+                            <option value="custom">Custom Character</option>
+                        </select>
+                    </div>
+                {:else if entityType === 'enemy'}
+                    <div class="form-group">
+                        <label for="enemy-template">Enemy Type:</label>
+                        <select 
+                            id="enemy-template" 
+                            bind:value={characterTemplate}
+                            on:change={handleTemplateChange}
+                        >
+                            <option value="skeleton">Skeleton</option>
+                            <option value="zombie">Zombie</option>
+                            <option value="goblin">Goblin</option>
+                            <option value="dragon">Dragon</option>
+                            <option value="ghost">Ghost</option>
+                            <option value="dr_nikic">Dr. Nikic</option>
+                            <option value="custom">Custom Enemy</option>
+                        </select>
+                    </div>
+                {:else if entityType === 'item'}
+                    <div class="form-group">
+                        <label for="item-type">Item Type:</label>
+                        <select 
+                            id="item-type" 
+                            bind:value={itemType}
+                            on:change={handleTemplateChange}
+                        >
+                            <option value="weapon">Weapon</option>
+                            <option value="armor">Armor</option>
+                            <option value="potion">Potion</option>
+                            <option value="key">Key</option>
+                            <option value="eye_of_elder">Eye of Elder</option>
+                            <option value="custom">Custom Item</option>
+                        </select>
+                    </div>
+                {/if}
+
+                <!-- Visual Properties -->
+                <h3>Visual Properties</h3>
+                <div class="form-group">
+                    <label for="object-shape">Shape:</label>
+                    <select id="object-shape" bind:value={shape}>
+                        <option value="cube">Cube</option>
+                        <option value="sphere">Sphere</option>
+                        <option value="cylinder">Cylinder</option>
+                        <option value="cone">Cone</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="object-color">Color:</label>
+                    <input 
+                        id="object-color"
+                        type="color" 
+                        bind:value={color}
+                    />
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="object-width">Width:</label>
+                        <input 
+                            id="object-width"
+                            type="number" 
+                            bind:value={width}
+                            min="1"
+                            required
+                        />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="object-height">Height:</label>
+                        <input 
+                            id="object-height"
+                            type="number" 
+                            bind:value={height}
+                            min="1"
+                            required
+                        />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="object-depth">Depth:</label>
+                        <input 
+                            id="object-depth"
+                            type="number" 
+                            bind:value={depth}
+                            min="1"
+                            required
+                        />
+                    </div>
+                </div>
+
+                <!-- Entity Properties -->
+                <h3>Entity Properties</h3>
+                <div class="form-group">
+                    <label for="display-name">Display Name:</label>
+                    <input 
+                        id="display-name"
+                        type="text" 
+                        bind:value={displayName}
+                        placeholder="Enter name"
+                        required
+                    />
+                </div>
+                
+                <div class="form-group">
+                    <label for="description">Description:</label>
+                    <textarea 
+                        id="description"
+                        bind:value={description}
+                        placeholder="Enter description"
+                        rows="2"
+                    ></textarea>
+                </div>
+
+                <!-- Combat Stats for Heroes and Enemies -->
+                {#if entityType === 'hero' || entityType === 'enemy'}
+                    <h3>Combat Stats</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="stat-health">Health:</label>
+                            <input 
+                                id="stat-health"
+                                type="number" 
+                                bind:value={health}
+                                min="1"
+                            />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="stat-attack">Attack:</label>
+                            <input 
+                                id="stat-attack"
+                                type="number" 
+                                bind:value={attack}
+                                min="0"
+                            />
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="stat-defense">Defense:</label>
+                            <input 
+                                id="stat-defense"
+                                type="number" 
+                                bind:value={defense}
+                                min="0"
+                            />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="stat-speed">Speed:</label>
+                            <input 
+                                id="stat-speed"
+                                type="number" 
+                                bind:value={speed}
+                                min="1"
+                            />
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="special-ability">Special Ability:</label>
+                        <input 
+                            id="special-ability"
+                            type="text" 
+                            bind:value={specialAbility}
+                            placeholder="Enter special ability (optional)"
+                        />
+                    </div>
+                {/if}
+
+                <!-- Item Drops for Enemies -->
+                {#if entityType === 'enemy'}
+                    <h3>Item Drops</h3>
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input 
+                                type="checkbox" 
+                                bind:checked={dropEyeOfElder} 
+                            />
+                            Drops Eye of Elder
+                        </label>
+                    </div>
+                    
+                    {#if dropEyeOfElder}
+                        <div class="form-group">
+                            <label for="eye-drop-rate">Drop Rate (%):</label>
+                            <input 
+                                id="eye-drop-rate"
+                                type="number" 
+                                bind:value={eyeDropRate}
+                                min="1"
+                                max="100"
+                            />
+                        </div>
+                    {/if}
+                {/if}
+
+                <!-- Interactive Properties for NPCs -->
+                {#if entityType === 'npc'}
+                    <h3>NPC Properties</h3>
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input 
+                                type="checkbox" 
+                                bind:checked={isInteractable} 
+                            />
+                            Player can interact
+                        </label>
+                    </div>
+                {/if}
+
+                <!-- Portal Properties -->
+                {#if entityType === 'portal'}
+                    <h3>Portal Properties</h3>
+                    <p class="info-text">
+                        The Elder Portal requires 5 Eyes of Elder to build.
+                    </p>
+                {/if}
+
+                <div class="dialog-buttons">
+                    <button type="button" on:click={handleClose}>Cancel</button>
+                    <button type="submit">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+{/if}
+
+<style>
+    .dialog-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        overflow-y: auto;
+    }
+
+    .dialog {
+        background: #2c2c2c;
+        padding: 2rem;
+        border-radius: 8px;
+        min-width: 500px;
+        max-width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    h2, h3 {
+        color: #fff;
+        margin-top: 0;
+    }
+
+    h3 {
+        margin-top: 1.5rem;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.25rem;
+        border-bottom: 1px solid #444;
+    }
+
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: #aaa;
+    }
+
+    .checkbox-group label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 1rem;
+    }
+
+    input, select, textarea {
+        width: 100%;
+        padding: 0.5rem;
+        background: #333;
+        border: 1px solid #444;
+        color: white;
+        border-radius: 4px;
+    }
+
+    textarea {
+        resize: vertical;
+    }
+
+    input[type="checkbox"] {
+        width: auto;
+    }
+
+    input[type="color"] {
+        padding: 0;
+        height: 40px;
+    }
+
+    .info-text {
+        background: #333;
+        padding: 0.5rem;
+        border-radius: 4px;
+        color: #aaa;
+        font-style: italic;
+    }
+
+    .dialog-buttons {
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+
+    button {
+        padding: 0.5rem 1.5rem;
+        background: #444;
+        border: none;
+        color: white;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1rem;
+    }
+
+    button[type="submit"] {
+        background: #4c7dff;
+    }
+
+    button:hover {
+        opacity: 0.9;
+    }
+</style>

@@ -1,0 +1,1314 @@
+<script lang="ts">
+    import GameCanvas from '$lib/components/GameCanvas.svelte';
+    import GameTestMode from '$lib/components/GameTestMode.svelte';
+    import ObjectCreationDialog from '$lib/components/ObjectCreationDialog.svelte';
+    import EntityCreationDialog from '$lib/components/EntityCreationDialog.svelte';
+    import EntityPropertiesPanel from '$lib/components/EntityPropertiesPanel.svelte';
+    import { 
+        activeScene, 
+        createScene, 
+        scenes, 
+        updateScene, 
+        deleteScene, 
+        initializeStore, 
+        selectedObject, 
+        gameMode,
+        startGameTest,
+        endGameTest,
+        playerHealth,
+        inventory,
+        gameMessages
+    } from '$lib/stores/gameStore';
+    import type { GameObject, GameScene } from '$lib/types/GameTypes';
+    import { onMount } from 'svelte';
+    import { LocalStorageService } from '$lib/services/DataService';
+    
+    let currentMode: '2d' | '3d' = '3d'; // Default to 3D mode for entity creation
+    let showObjectDialog = false;
+    let showEntityDialog = false;
+    let showExportDialog = false;
+    let showImportDialog = false;
+    
+    // Tabs for the left sidebar
+    let activeSidebarTab: 'scenes' | 'entities' | 'items' = 'scenes';
+    
+    // Entity filtering
+    let entityFilter: string = 'all';
+    
+    // Game setup
+    let gameSetupMode = false;
+    let eyesOfElderRequired = 5;
+    
+    // Import/Export
+    let exportedGameData = '';
+    let importGameData = '';
+    let importError = '';
+    
+    // Data service
+    const dataService = new LocalStorageService();
+    
+    onMount(async () => {
+        await initializeStore();
+        if ($scenes.length === 0) {
+            await handleNewScene();
+        }
+    });
+    
+    async function handleNewScene() {
+        const sceneName = `Scene ${$scenes.length + 1}`;
+        const newScene = await createScene(sceneName, currentMode);
+        activeScene.set(newScene);
+    }
+    
+    function handleAddObject() {
+        showObjectDialog = true;
+    }
+    
+    function handleAddEntity() {
+        showEntityDialog = true;
+    }
+    
+    async function handleObjectCreate(event: CustomEvent<GameObject>) {
+        if (!$activeScene) return;
+        
+        const updatedScene = {
+            ...$activeScene,
+            objects: [...$activeScene.objects, event.detail]
+        };
+        
+        await updateScene(updatedScene);
+        activeScene.set(updatedScene);
+    }
+    
+    async function handleDeleteScene(scene: GameScene) {
+        if (confirm(`Are you sure you want to delete scene "${scene.name}"?`)) {
+            await deleteScene(scene.id);
+        }
+    }
+    
+    function handleModeChange(event: Event) {
+        const select = event.target as HTMLSelectElement;
+        currentMode = select.value as '2d' | '3d';
+    }
+    
+    function handleSceneSelect(scene: GameScene) {
+        activeScene.set(scene);
+    }
+    
+    function handleKeyDown(event: KeyboardEvent, scene: GameScene) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            handleSceneSelect(scene);
+        }
+    }
+    
+    function handleDeleteObject(objectId: string) {
+        if (!$activeScene) return;
+        
+        if (confirm('Are you sure you want to delete this object?')) {
+            const updatedObjects = $activeScene.objects.filter(obj => obj.id !== objectId);
+            
+            const updatedScene = {
+                ...$activeScene,
+                objects: updatedObjects
+            };
+            
+            updateScene(updatedScene);
+            
+            // If the deleted object was selected, deselect it
+            if ($selectedObject?.id === objectId) {
+                selectedObject.set(null);
+            }
+        }
+    }
+    
+    function getFilteredObjects() {
+        if (!$activeScene) return [];
+        
+        if (entityFilter === 'all') {
+            return $activeScene.objects;
+        }
+        
+        return $activeScene.objects.filter(obj => 
+            obj.entity && obj.entity.entityType === entityFilter
+        );
+    }
+    
+    function getEntityIcon(type: string) {
+        switch(type) {
+            case 'hero': return '⚔️';
+            case 'enemy': return '👹';
+            case 'npc': return '🧙';
+            case 'item': return '📦';
+            case 'portal': return '🌀';
+            default: return '📋';
+        }
+    }
+    
+    function hasEyeOfElderDrops() {
+        if (!$activeScene) return false;
+        
+        return $activeScene.objects.some(obj => 
+            obj.entity?.entityType === 'enemy' && 
+            obj.entity.drops?.some(drop => drop.itemId === 'eye_of_elder')
+        );
+    }
+    
+    function hasElderPortal() {
+        if (!$activeScene) return false;
+        
+        return $activeScene.objects.some(obj => 
+            obj.entity?.entityType === 'portal'
+        );
+    }
+    
+    function getRequiredCharactersStatus() {
+        if (!$activeScene) return { fred: false, tom: false, casta: false, elda: false, drNikic: false };
+        
+        const characters = {
+            fred: false,
+            tom: false,
+            casta: false,
+            elda: false,
+            drNikic: false
+        };
+        
+        $activeScene.objects.forEach(obj => {
+            if (obj.entity?.template === 'fred') characters.fred = true;
+            if (obj.entity?.template === 'tom') characters.tom = true;
+            if (obj.entity?.template === 'casta') characters.casta = true;
+            if (obj.entity?.template === 'elda_fairy') characters.elda = true;
+            if (obj.entity?.template === 'dr_nikic') characters.drNikic = true;
+        });
+        
+        return characters;
+    }
+    
+    function handleStartGameTest() {
+        startGameTest();
+    }
+    
+    async function handleExportGame() {
+        try {
+            exportedGameData = await dataService.exportGame();
+            showExportDialog = true;
+        } catch (error) {
+            console.error('Failed to export game:', error);
+            alert('Failed to export game data');
+        }
+    }
+    
+    async function handleImportGame() {
+        try {
+            importError = '';
+            const importedScenes = await dataService.importGame(importGameData);
+            scenes.set(importedScenes);
+            
+            if (importedScenes.length > 0) {
+                activeScene.set(importedScenes[0]);
+            }
+            
+            showImportDialog = false;
+            alert('Game data imported successfully!');
+        } catch (error) {
+            console.error('Failed to import game:', error);
+            importError = 'Invalid game data format';
+        }
+    }
+    
+    // Reactive declarations
+    $: characterStatus = getRequiredCharactersStatus();
+    $: hasEnemyWithEyeDrop = hasEyeOfElderDrops();
+    $: hasPortal = hasElderPortal();
+    $: filteredObjects = getFilteredObjects();
+    $: isPlaytestMode = $gameMode === 'playtest';
+    $: isGameSetupValid = characterStatus.fred && characterStatus.tom && 
+                          characterStatus.casta && characterStatus.elda && 
+                          characterStatus.drNikic && hasEnemyWithEyeDrop && hasPortal;
+</script>
+
+<div class="editor-layout">
+    {#if !isPlaytestMode}
+        <!-- Builder Mode UI -->
+        <header class="toolbar">
+            <h1>HDMY5 Game Builder</h1>
+            <div class="tools">
+                <button type="button" on:click={handleNewScene}>New Scene</button>
+                <button type="button" on:click={handleAddObject} disabled={!$activeScene}>
+                    Add Basic Object
+                </button>
+                <button type="button" on:click={handleAddEntity} disabled={!$activeScene} class="primary-btn">
+                    Add Game Entity
+                </button>
+                <label class="mode-select">
+                    Mode:
+                    <select bind:value={currentMode} on:change={handleModeChange}>
+                        <option value="2d">2D Mode</option>
+                        <option value="3d">3D Mode</option>
+                    </select>
+                </label>
+                <button 
+                    type="button" 
+                    class:active={gameSetupMode}
+                    on:click={() => gameSetupMode = !gameSetupMode}
+                >
+                    Game Setup
+                </button>
+                
+                <!-- Export/Import buttons -->
+                <div class="export-import">
+                    <button type="button" on:click={handleExportGame} title="Export game data">
+                        Export
+                    </button>
+                    <button type="button" on:click={() => showImportDialog = true} title="Import game data">
+                        Import
+                    </button>
+                    {#if isGameSetupValid}
+                        <button type="button" class="test-game-btn" on:click={handleStartGameTest}>
+                            Test Game
+                        </button>
+                    {/if}
+                </div>
+            </div>
+        </header>
+        
+        <main class="main-content">
+            <aside class="sidebar">
+                <div class="tab-buttons">
+                    <button 
+                        class:active={activeSidebarTab === 'scenes'}
+                        on:click={() => activeSidebarTab = 'scenes'}
+                    >
+                        Scenes
+                    </button>
+                    <button 
+                        class:active={activeSidebarTab === 'entities'}
+                        on:click={() => activeSidebarTab = 'entities'}
+                    >
+                        Entities
+                    </button>
+                    <button 
+                        class:active={activeSidebarTab === 'items'}
+                        on:click={() => activeSidebarTab = 'items'}
+                    >
+                        Items
+                    </button>
+                </div>
+                
+                {#if activeSidebarTab === 'scenes'}
+                    <div class="scene-hierarchy">
+                        <h2 id="scenes-heading">Scene Hierarchy</h2>
+                        <ul class="scenes-list" role="list" aria-labelledby="scenes-heading">
+                            {#each $scenes as scene}
+                                <li>
+                                    <div 
+                                        class="scene-item"
+                                        class:active={$activeScene?.id === scene.id}
+                                    >
+                                        <div class="scene-header">
+                                            <button 
+                                                type="button"
+                                                class="scene-select-btn"
+                                                on:click={() => handleSceneSelect(scene)}
+                                                on:keydown={(e) => handleKeyDown(e, scene)}
+                                            >
+                                                {scene.name} ({scene.type})
+                                            </button>
+                                            <button 
+                                                type="button" 
+                                                class="delete-btn"
+                                                on:click|stopPropagation={() => handleDeleteScene(scene)}
+                                                title="Delete scene"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                        {#if scene.objects.length > 0}
+                                            <ul class="object-list" role="list">
+                                                {#each scene.objects as object}
+                                                    <li 
+                                                        class="object-item"
+                                                        class:selected={$selectedObject?.id === object.id}
+                                                        on:click={() => selectedObject.set(object)}
+                                                    >
+                                                        {#if object.entity}
+                                                            <span class="entity-icon" title={object.entity.entityType}>
+                                                                {getEntityIcon(object.entity.entityType)}
+                                                            </span>
+                                                        {/if}
+                                                        <span class="object-name">
+                                                            {object.entity ? object.entity.displayName : object.name}
+                                                        </span>
+                                                        <button 
+                                                            type="button" 
+                                                            class="delete-btn small"
+                                                            on:click|stopPropagation={() => handleDeleteObject(object.id)}
+                                                            title="Delete object"
+                                                        >
+                                                            ×
+                                                        </button>
+                                                    </li>
+                                                {/each}
+                                            </ul>
+                                        {/if}
+                                    </div>
+                                </li>
+                            {/each}
+                        </ul>
+                    </div>
+                {:else if activeSidebarTab === 'entities'}
+                    <div class="entities-panel">
+                        <h2 id="entities-heading">Game Entities</h2>
+                        
+                        <div class="entity-filter">
+                            <label for="entity-type-filter">Filter by type:</label>
+                            <select id="entity-type-filter" bind:value={entityFilter}>
+                                <option value="all">All Entities</option>
+                                <option value="hero">Heroes</option>
+                                <option value="enemy">Enemies</option>
+                                <option value="npc">NPCs</option>
+                                <option value="item">Items</option>
+                                <option value="portal">Portals</option>
+                            </select>
+                        </div>
+                        
+                        {#if $activeScene}
+                            <ul class="entity-list" role="list">
+                                {#each filteredObjects as object}
+                                    {#if object.entity}
+                                        <li 
+                                            class="entity-item"
+                                            class:selected={$selectedObject?.id === object.id}
+                                            on:click={() => selectedObject.set(object)}
+                                        >
+                                            <div class="entity-info">
+                                                <span class="entity-icon" title={object.entity.entityType}>
+                                                    {getEntityIcon(object.entity.entityType)}
+                                                </span>
+                                                <div class="entity-details">
+                                                    <span class="entity-name">{object.entity.displayName}</span>
+                                                    {#if object.entity.entityType === 'enemy' && object.entity.combatStats}
+                                                        <span class="entity-stats">
+                                                            HP: {object.entity.combatStats.health} | 
+                                                            ATK: {object.entity.combatStats.attack}
+                                                        </span>
+                                                        {#if object.entity.drops?.some(drop => drop.itemId === 'eye_of_elder')}
+                                                            <span class="entity-drops">Drops: Eye of Elder</span>
+                                                        {/if}
+                                                    {/if}
+                                                </div>
+                                            </div>
+                                            <button 
+                                                type="button" 
+                                                class="delete-btn small"
+                                                on:click|stopPropagation={() => handleDeleteObject(object.id)}
+                                                title="Delete entity"
+                                            >
+                                                ×
+                                            </button>
+                                        </li>
+                                    {/if}
+                                {/each}
+                                
+                                {#if filteredObjects.filter(obj => obj.entity).length === 0}
+                                    <li class="empty-message">
+                                        No {entityFilter === 'all' ? 'entities' : entityFilter + 's'} found
+                                    </li>
+                                {/if}
+                            </ul>
+                        {/if}
+                        
+                        <button 
+                            type="button" 
+                            class="add-entity-btn"
+                            on:click={handleAddEntity}
+                            disabled={!$activeScene}
+                        >
+                            + Add New Entity
+                        </button>
+                    </div>
+                {:else if activeSidebarTab === 'items'}
+                    <div class="items-panel">
+                        <h2 id="items-heading">Game Items</h2>
+                        
+                        {#if $activeScene}
+                            <div class="item-sections">
+                                <div class="item-section">
+                                    <h3>Required Items</h3>
+                                    <div class="required-item">
+                                        <div class="item-info">
+                                            <span class="item-icon">👁️</span>
+                                            <div class="item-details">
+                                                <span class="item-name">Eye of Elder</span>
+                                                <span class="item-desc">Required to build the Elder Portal</span>
+                                            </div>
+                                        </div>
+                                        <span class="item-status" class:completed={hasEnemyWithEyeDrop}>
+                                            {hasEnemyWithEyeDrop ? '✓' : '×'}
+                                        </span>
+                                    </div>
+                                    
+                                    <div class="required-item">
+                                        <div class="item-info">
+                                            <span class="item-icon">🌀</span>
+                                            <div class="item-details">
+                                                <span class="item-name">Elder Portal</span>
+                                                <span class="item-desc">Final objective of the game</span>
+                                            </div>
+                                        </div>
+                                        <span class="item-status" class:completed={hasPortal}>
+                                            {hasPortal ? '✓' : '×'}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <div class="item-section">
+                                    <h3>Required Characters</h3>
+                                    
+                                    <div class="required-item">
+                                        <div class="item-info">
+                                            <span class="item-icon">⚔️</span>
+                                            <div class="item-details">
+                                                <span class="item-name">Fred the Brave</span>
+                                                <span class="item-desc">Hero character</span>
+                                            </div>
+                                        </div>
+                                        <span class="item-status" class:completed={characterStatus.fred}>
+                                            {characterStatus.fred ? '✓' : '×'}
+                                        </span>
+                                    </div>
+                                    
+                                    <div class="required-item">
+                                        <div class="item-info">
+                                            <span class="item-icon">⚔️</span>
+                                            <div class="item-details">
+                                                <span class="item-name">Tom the Agile</span>
+                                                <span class="item-desc">Hero character</span>
+                                            </div>
+                                        </div>
+                                        <span class="item-status" class:completed={characterStatus.tom}>
+                                            {characterStatus.tom ? '✓' : '×'}
+                                        </span>
+                                    </div>
+                                    
+                                    <div class="required-item">
+                                        <div class="item-info">
+                                            <span class="item-icon">🧙</span>
+                                            <div class="item-details">
+                                                <span class="item-name">Casta the Wizard</span>
+                                                <span class="item-desc">Hero character</span>
+                                            </div>
+                                        </div>
+                                        <span class="item-status" class:completed={characterStatus.casta}>
+                                            {characterStatus.casta ? '✓' : '×'}
+                                        </span>
+                                    </div>
+                                    
+                                    <div class="required-item">
+                                        <div class="item-info">
+                                            <span class="item-icon">✨</span>
+                                            <div class="item-details">
+                                                <span class="item-name">Elda the Fairy</span>
+                                                <span class="item-desc">NPC character</span>
+                                            </div>
+                                        </div>
+                                        <span class="item-status" class:completed={characterStatus.elda}>
+                                            {characterStatus.elda ? '✓' : '×'}
+                                        </span>
+                                    </div>
+                                    
+                                    <div class="required-item">
+                                        <div class="item-info">
+                                            <span class="item-icon">👹</span>
+                                            <div class="item-details">
+                                                <span class="item-name">Dr. Nikic</span>
+                                                <span class="item-desc">Enemy character</span>
+                                            </div>
+                                        </div>
+                                        <span class="item-status" class:completed={characterStatus.drNikic}>
+                                            {characterStatus.drNikic ? '✓' : '×'}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <div class="item-section">
+                                    <h3>Game Items</h3>
+                                    
+                                    <ul class="game-items-list">
+                                        {#each $activeScene.objects.filter(obj => obj.entity?.entityType === 'item') as item}
+                                            <li 
+                                                class="game-item"
+                                                class:selected={$selectedObject?.id === item.id}
+                                                on:click={() => selectedObject.set(item)}
+                                            >
+                                                <div class="item-info">
+                                                    <span class="item-icon">📦</span>
+                                                    <div class="item-details">
+                                                        <span class="item-name">{item.entity?.displayName}</span>
+                                                        <span class="item-desc">{item.entity?.description || 'No description'}</span>
+                                                    </div>
+                                                </div>
+                                                <button 
+                                                    type="button" 
+                                                    class="delete-btn small"
+                                                    on:click|stopPropagation={() => handleDeleteObject(item.id)}
+                                                    title="Delete item"
+                                                >
+                                                    ×
+                                                </button>
+                                            </li>
+                                        {/each}
+                                        
+                                        {#if $activeScene.objects.filter(obj => obj.entity?.entityType === 'item').length === 0}
+                                            <li class="empty-message">No items added yet</li>
+                                        {/if}
+                                    </ul>
+                                    
+                                    <button 
+                                        type="button" 
+                                        class="add-entity-btn"
+                                        on:click={handleAddEntity}
+                                        disabled={!$activeScene}
+                                    >
+                                        + Add New Item
+                                    </button>
+                                </div>
+                            </div>
+                        {/if}
+                    </div>
+                {/if}
+            </aside>
+            
+            <div class="canvas-container">
+                {#if $activeScene}
+                    <GameCanvas scene={$activeScene} />
+                {/if}
+            </div>
+            
+            <aside class="properties-panel">
+                <h2 id="properties-heading">Properties</h2>
+                {#if $selectedObject}
+                    {#if $selectedObject.entity}
+                        <EntityPropertiesPanel selectedObject={$selectedObject} />
+                    {/if}
+                    
+                    <div class="properties-form" role="form" aria-labelledby="properties-heading">
+                        <h3>{$selectedObject.entity ? 'Visual Properties' : 'Object Properties'}</h3>
+                        
+                        {#if !$selectedObject.entity}
+                            <div class="property">
+                                <label for="object-name">Object Name:</label>
+                                <input 
+                                    id="object-name"
+                                    type="text" 
+                                    bind:value={$selectedObject.name}
+                                    on:input={() => updateScene($activeScene!)}
+                                />
+                            </div>
+                        {/if}
+                        
+                        <div class="property">
+                            <label for="object-color">Color:</label>
+                            <input 
+                                id="object-color"
+                                type="color" 
+                                bind:value={$selectedObject.properties.color}
+                                on:input={() => updateScene($activeScene!)}
+                            />
+                        </div>
+                        
+                        <div class="property">
+                            <label for="object-width">Width:</label>
+                            <input 
+                                id="object-width"
+                                type="number" 
+                                bind:value={$selectedObject.properties.width}
+                                on:input={() => updateScene($activeScene!)}
+                            />
+                        </div>
+                        
+                        <div class="property">
+                            <label for="object-height">Height:</label>
+                            <input 
+                                id="object-height"
+                                type="number" 
+                                bind:value={$selectedObject.properties.height}
+                                on:input={() => updateScene($activeScene!)}
+                            />
+                        </div>
+                        
+                        {#if $selectedObject.type === '3d'}
+                            <div class="property">
+                                <label for="object-depth">Depth:</label>
+                                <input 
+                                    id="object-depth"
+                                    type="number" 
+                                    bind:value={$selectedObject.properties.depth}
+                                    on:input={() => updateScene($activeScene!)}
+                                />
+                            </div>
+                        {/if}
+                        
+                        <div class="property">
+                            <label>Position:</label>
+                            <div class="position-inputs">
+                                <div>
+                                    <label for="pos-x">X:</label>
+                                    <input 
+                                        id="pos-x"
+                                        type="number" 
+                                        bind:value={$selectedObject.position.x}
+                                        on:input={() => updateScene($activeScene!)}
+                                    />
+                                </div>
+                                <div>
+                                    <label for="pos-y">Y:</label>
+                                    <input 
+                                        id="pos-y"
+                                        type="number" 
+                                        bind:value={$selectedObject.position.y}
+                                        on:input={() => updateScene($activeScene!)}
+                                    />
+                                </div>
+                                <div>
+                                    <label for="pos-z">Z:</label>
+                                    <input 
+                                        id="pos-z"
+                                        type="number" 
+                                        bind:value={$selectedObject.position.z}
+                                        on:input={() => updateScene($activeScene!)}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {:else if $activeScene}
+                    <div class="properties-form" role="form" aria-labelledby="properties-heading">
+                        <div class="property">
+                            <label for="scene-name">Scene Name:</label>
+                            <input 
+                                id="scene-name"
+                                type="text" 
+                                bind:value={$activeScene.name}
+                                on:input={() => updateScene($activeScene)}
+                            />
+                        </div>
+                        <div class="property">
+                            <label id="scene-type-label">Type:</label>
+                            <span aria-labelledby="scene-type-label">{$activeScene.type}</span>
+                        </div>
+                        <div class="property">
+                            <label id="object-count-label">Objects:</label>
+                            <span aria-labelledby="object-count-label">{$activeScene.objects.length}</span>
+                        </div>
+                        
+                        {#if gameSetupMode}
+                            <div class="game-setup-section">
+                                <h3>Game Setup</h3>
+                                
+                                <div class="property">
+                                    <label for="elder-eyes-required">Eyes of Elder Required:</label>
+                                    <input 
+                                        id="elder-eyes-required"
+                                        type="number" 
+                                        bind:value={eyesOfElderRequired}
+                                        min="1"
+                                        max="10"
+                                    />
+                                </div>
+                                
+                                <div class="game-requirements">
+                                    <h4>Essential Components</h4>
+                                    <ul class="requirements-list">
+                                        <li class:completed={characterStatus.fred && characterStatus.tom}>
+                                            <span class="req-name">Heroes: Fred and Tom</span>
+                                        </li>
+                                        <li class:completed={characterStatus.casta}>
+                                            <span class="req-name">Casta the Wizard</span>
+                                        </li>
+                                        <li class:completed={characterStatus.elda}>
+                                            <span class="req-name">Elda the Fairy</span>
+                                        </li>
+                                        <li class:completed={characterStatus.drNikic}>
+                                            <span class="req-name">Dr. Nikic (Evil Robot Scientist)</span>
+                                        </li>
+                                        <li class:completed={hasEnemyWithEyeDrop}>
+                                            <span class="req-name">Enemies that drop Eye of Elder</span>
+                                        </li>
+                                        <li class:completed={hasPortal}>
+                                            <span class="req-name">Elder Portal</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                                
+                                <button 
+                                    type="button" 
+                                    class="test-game-btn"
+                                    disabled={!isGameSetupValid}
+                                    on:click={handleStartGameTest}
+                                >
+                                    Test Game
+                                </button>
+                            </div>
+                        {/if}
+                    </div>
+                {/if}
+            </aside>
+        </main>
+    {:else}
+        <!-- Game Test Mode UI -->
+        <div class="game-test-container">
+            {#if $activeScene}
+                <GameTestMode scene={$activeScene} />
+            {/if}
+        </div>
+    {/if}
+</div>
+
+<!-- Dialogs -->
+<ObjectCreationDialog 
+    bind:isOpen={showObjectDialog}
+    mode={$activeScene?.type ?? '2d'}
+    on:create={handleObjectCreate}
+/>
+
+<EntityCreationDialog
+    bind:isOpen={showEntityDialog}
+    on:create={handleObjectCreate}
+/>
+
+<!-- Export Game Dialog -->
+{#if showExportDialog}
+    <div class="dialog-overlay" on:click={() => showExportDialog = false}>
+        <div class="dialog" on:click|stopPropagation>
+            <h2>Export Game Data</h2>
+            <p>Copy the game data below to save your game:</p>
+            <div class="export-area">
+                <textarea readonly rows="10" bind:value={exportedGameData}></textarea>
+            </div>
+            <div class="dialog-buttons">
+                <button 
+                    type="button" 
+                    on:click={() => {
+                        navigator.clipboard.writeText(exportedGameData);
+                        alert('Game data copied to clipboard!');
+                    }}
+                >
+                    Copy to Clipboard
+                </button>
+                <button type="button" on:click={() => showExportDialog = false}>Close</button>
+            </div>
+        </div>
+    </div>
+{/if}
+
+<!-- Import Game Dialog -->
+{#if showImportDialog}
+    <div class="dialog-overlay" on:click={() => showImportDialog = false}>
+        <div class="dialog" on:click|stopPropagation>
+            <h2>Import Game Data</h2>
+            <p>Paste your game data below to import:</p>
+            <div class="export-area">
+                <textarea rows="10" bind:value={importGameData} placeholder="Paste game data here..."></textarea>
+            </div>
+            {#if importError}
+                <div class="error-message">{importError}</div>
+            {/if}
+            <div class="dialog-buttons">
+                <button 
+                    type="button" 
+                    on:click={handleImportGame}
+                    disabled={!importGameData}
+                >
+                    Import Game
+                </button>
+                <button type="button" on:click={() => showImportDialog = false}>Cancel</button>
+            </div>
+        </div>
+    </div>
+{/if}
+
+<style>
+    .editor-layout {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+    }
+    
+    .toolbar {
+        padding: 1rem;
+        background: #2c2c2c;
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .main-content {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 250px 1fr 250px;
+        gap: 1rem;
+        padding: 1rem;
+        background: #1e1e1e;
+        color: white;
+        overflow: hidden;
+    }
+    
+    .sidebar, .properties-panel {
+        background: #2c2c2c;
+        padding: 1rem;
+        border-radius: 4px;
+        overflow-y: auto;
+    }
+    
+    .canvas-container, .game-test-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: #333;
+        border-radius: 4px;
+        padding: 1rem;
+        overflow: hidden;
+    }
+    
+    .game-test-container {
+        height: 100vh;
+        width: 100vw;
+        padding: 0;
+        margin: 0;
+        border-radius: 0;
+    }
+    
+    h1 {
+        margin: 0;
+        font-size: 1.5rem;
+    }
+    
+    h2 {
+        margin: 0 0 1rem 0;
+        font-size: 1.2rem;
+    }
+    
+    h3 {
+        margin: 1.5rem 0 1rem 0;
+        font-size: 1.1rem;
+        padding-bottom: 0.25rem;
+        border-bottom: 1px solid #444;
+    }
+    
+    h4 {
+        margin: 1rem 0 0.5rem 0;
+        font-size: 0.9rem;
+        color: #aaa;
+    }
+    
+    .tools {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    
+    button, select {
+        padding: 0.5rem 1rem;
+        background: #444;
+        border: none;
+        color: white;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    
+    .primary-btn {
+        background: #4c7dff;
+    }
+    
+    button:hover {
+        background: #555;
+    }
+    
+    button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    button.active {
+        background: #4c7dff;
+    }
+    
+    .mode-select {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: white;
+    }
+    
+    .tab-buttons {
+        display: flex;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid #444;
+    }
+    
+    .tab-buttons button {
+        flex: 1;
+        padding: 0.5rem;
+        background: none;
+        border-radius: 0;
+        border-bottom: 3px solid transparent;
+    }
+    
+    .tab-buttons button.active {
+        border-bottom-color: #4c7dff;
+        background: none;
+    }
+    
+    .tab-buttons button:hover {
+        background: rgba(255, 255, 255, 0.1);
+    }
+    
+    .scenes-list, .entity-list, .game-items-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .scene-item {
+        width: 100%;
+        padding: 0.5rem;
+        background: #333;
+        border-radius: 4px;
+    }
+    
+    .scene-item:hover {
+        background: #444;
+    }
+    
+    .scene-item.active {
+        background: #555;
+        border-left: 3px solid #fff;
+    }
+    
+    .scene-select-btn {
+        flex: 1;
+        text-align: left;
+        padding: 0;
+        background: none;
+        border: none;
+        color: white;
+        cursor: pointer;
+    }
+    
+    .scene-select-btn:hover {
+        background: none;
+    }
+    
+    .scene-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .object-list {
+        margin-left: 1rem;
+        margin-top: 0.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        list-style: none;
+        padding: 0;
+    }
+    
+    .object-item {
+        padding: 0.25rem 0.5rem;
+        background: #2c2c2c;
+        border-radius: 2px;
+        font-size: 0.9em;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        cursor: pointer;
+    }
+    
+    .object-item:hover {
+        background: #3c3c3c;
+    }
+    
+    .object-item.selected {
+        background: #4c7dff;
+    }
+    
+    .object-name {
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .entity-icon {
+        margin-right: 0.25rem;
+        font-size: 1.1em;
+    }
+    
+    .delete-btn {
+        padding: 0.2rem 0.5rem;
+        background: #ff4444;
+        border: none;
+        border-radius: 4px;
+        color: white;
+        font-size: 1rem;
+        line-height: 1;
+    }
+    
+    .delete-btn.small {
+        padding: 0.1rem 0.3rem;
+        font-size: 0.8rem;
+        opacity: 0.8;
+    }
+    
+    .delete-btn:hover {
+        background: #ff6666;
+    }
+    
+    .property {
+        margin-bottom: 1rem;
+    }
+    
+    .property label {
+        display: block;
+        margin-bottom: 0.25rem;
+        color: #aaa;
+    }
+    
+    .property input {
+        width: 100%;
+        padding: 0.5rem;
+        background: #333;
+        border: 1px solid #444;
+        color: white;
+        border-radius: 4px;
+    }
+    
+    .property input:focus {
+        outline: none;
+        border-color: #666;
+    }
+    
+    .position-inputs {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 0.5rem;
+    }
+
+    .position-inputs > div {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .position-inputs label {
+        font-size: 0.8em;
+        margin-bottom: 0.25rem;
+    }
+
+    input[type="number"] {
+        width: 100%;
+        padding: 0.5rem;
+        background: #333;
+        border: 1px solid #444;
+        color: white;
+        border-radius: 4px;
+    }
+
+    input[type="color"] {
+        width: 100%;
+        height: 40px;
+        padding: 0;
+        border: none;
+        background: none;
+    }
+    
+    .entity-filter {
+        margin-bottom: 1rem;
+    }
+    
+    .entity-item, .game-item, .required-item {
+        padding: 0.5rem;
+        background: #333;
+        border-radius: 4px;
+        margin-bottom: 0.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+    }
+    
+    .entity-item:hover, .game-item:hover {
+        background: #444;
+    }
+    
+    .entity-item.selected, .game-item.selected {
+        background: #4c7dff;
+    }
+    
+    .entity-info, .item-info {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex: 1;
+    }
+    
+    .entity-details, .item-details {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .entity-name, .item-name {
+        font-weight: bold;
+    }
+    
+    .entity-stats, .entity-drops, .item-desc {
+        font-size: 0.8rem;
+        color: #aaa;
+    }
+    
+    .empty-message {
+        padding: 1rem;
+        text-align: center;
+        color: #aaa;
+        font-style: italic;
+    }
+    
+    .add-entity-btn {
+        width: 100%;
+        margin-top: 1rem;
+        background: #4c7dff;
+    }
+    
+    .item-sections {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+    
+    .item-status {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 1.2rem;
+        color: #ff4444;
+    }
+    
+    .item-status.completed {
+        color: #4caf50;
+    }
+    
+    .game-setup-section {
+        margin-top: 1.5rem;
+        padding: 1rem;
+        background: #333;
+        border-radius: 4px;
+    }
+    
+    .game-requirements {
+        margin-top: 1rem;
+    }
+    
+    .requirements-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .requirements-list li {
+        padding: 0.5rem;
+        margin-bottom: 0.25rem;
+        border-radius: 4px;
+        background: #444;
+        position: relative;
+        padding-left: 1.5rem;
+    }
+    
+    .requirements-list li::before {
+        content: '×';
+        position: absolute;
+        left: 0.5rem;
+        color: #ff4444;
+        font-weight: bold;
+    }
+    
+    .requirements-list li.completed::before {
+        content: '✓';
+        color: #4caf50;
+    }
+    
+    .test-game-btn {
+        margin-top: 1rem;
+        width: 100%;
+        background: #4caf50;
+    }
+    
+    .test-game-btn:disabled {
+        background: #555;
+    }
+    
+    .export-import {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .dialog-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+    
+    .dialog {
+        background: #2c2c2c;
+        padding: 2rem;
+        border-radius: 8px;
+        min-width: 500px;
+        max-width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    
+    .export-area textarea {
+        width: 100%;
+        padding: 1rem;
+        background: #333;
+        border: 1px solid #444;
+        color: white;
+        border-radius: 4px;
+        resize: vertical;
+        font-family: monospace;
+        font-size: 0.9rem;
+    }
+    
+    .dialog-buttons {
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+    
+    .error-message {
+        color: #ff4444;
+        margin-top: 0.5rem;
+        padding: 0.5rem;
+        background: rgba(255, 68, 68, 0.1);
+        border-radius: 4px;
+    }
+</style>
