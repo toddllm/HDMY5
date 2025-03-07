@@ -1,0 +1,826 @@
+<script lang="ts">
+    import { onMount, onDestroy } from 'svelte';
+    import type { GameScene, GameObject } from '$lib/types/GameTypes';
+    import { 
+        activeScene, 
+        playerHealth, 
+        inventory, 
+        gameMessages, 
+        currentPlayerEntity,
+        eyesOfElder,
+        combat, 
+        interactWithNPC,
+        usePortal,
+        addGameMessage,
+        endGameTest
+    } from '$lib/stores/gameStore';
+    
+    export let scene: GameScene;
+    
+    let canvas: HTMLCanvasElement;
+    let ctx: CanvasRenderingContext2D;
+    
+    let player: GameObject | null = null;
+    let playerSpeed = 5;
+    
+    // Input tracking
+    let keys = {
+        w: false,
+        a: false,
+        s: false,
+        d: false
+    };
+    
+    // Camera and rendering
+    let cameraPosition = { x: 0, y: 0 };
+    let zoom = 1;
+    let isometric = scene.type === '3d';
+    let viewRotationY = 0;
+    
+    // Game state
+    let objects: GameObject[] = [];
+    let gameOver = false;
+    
+    // Initialize game
+    onMount(() => {
+        ctx = canvas.getContext('2d')!;
+        canvas.focus();
+        
+        // Set initial player entity
+        const heroes = scene.objects.filter(obj => obj.entity && obj.entity.entityType === 'hero');
+        if (heroes.length > 0) {
+            player = heroes[0];
+            currentPlayerEntity.set(player);
+        }
+        
+        // Copy scene objects to prevent mutation
+        objects = [...scene.objects];
+        
+        // Start game loop
+        const gameLoop = () => {
+            if (!gameOver) {
+                update();
+                render();
+                requestAnimationFrame(gameLoop);
+            }
+        };
+        
+        gameLoop();
+        
+        // Add event listeners
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+        
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
+        };
+    });
+    
+    onDestroy(() => {
+        gameOver = true;
+        window.removeEventListener('keydown', handleKeyDown);
+        window.removeEventListener('keyup', handleKeyUp);
+    });
+    
+    function handleKeyDown(e: KeyboardEvent) {
+        if (e.key.toLowerCase() in keys) {
+            keys[e.key.toLowerCase() as keyof typeof keys] = true;
+            e.preventDefault();
+        }
+        
+        // Exit game test mode with Escape
+        if (e.key === 'Escape') {
+            handleExitTest();
+        }
+    }
+    
+    function handleKeyUp(e: KeyboardEvent) {
+        if (e.key.toLowerCase() in keys) {
+            keys[e.key.toLowerCase() as keyof typeof keys] = false;
+        }
+    }
+    
+    function update() {
+        if (!player) return;
+        
+        // Player movement
+        let moveX = 0;
+        let moveZ = 0;
+        
+        if (keys.w) moveZ -= playerSpeed;
+        if (keys.s) moveZ += playerSpeed;
+        if (keys.a) moveX -= playerSpeed;
+        if (keys.d) moveX += playerSpeed;
+        
+        // Apply movement based on view rotation
+        if (moveX !== 0 || moveZ !== 0) {
+            const rotationRad = (viewRotationY * Math.PI) / 180;
+            const newX = moveX * Math.cos(rotationRad) - moveZ * Math.sin(rotationRad);
+            const newZ = moveX * Math.sin(rotationRad) + moveZ * Math.cos(rotationRad);
+            
+            // Update player position
+            player.position.x += newX;
+            player.position.z += newZ;
+            
+            // Update camera to follow player
+            cameraPosition.x = player.position.x - canvas.width / 2;
+            cameraPosition.y = player.position.y - canvas.height / 2;
+            
+            // Check for interactions with objects
+            checkObjectInteractions();
+        }
+        
+        // Check game over condition
+        if ($playerHealth <= 0) {
+            addGameMessage("You have been defeated! Game over.", "error");
+            gameOver = true;
+            setTimeout(() => {
+                handleExitTest();
+            }, 3000);
+        }
+    }
+    
+    function checkObjectInteractions() {
+        if (!player) return;
+        
+        // Check collision with each object
+        objects.forEach(obj => {
+            if (obj.id === player?.id) return; // Skip self
+            
+            const distance = calculateDistance(player.position, obj.position);
+            const interactionRadius = 50; // Radius for interactions
+            
+            if (distance < interactionRadius) {
+                // Handle interaction based on entity type
+                if (obj.entity) {
+                    if (obj.entity.entityType === 'item') {
+                        // Collect item
+                        addGameMessage(`Collected ${obj.entity.displayName}`, 'success');
+                        if (obj.entity.itemType) {
+                            $inventory[obj.entity.itemType] = ($inventory[obj.entity.itemType] || 0) + 1;
+                        }
+                        // Remove item from world
+                        objects = objects.filter(o => o.id !== obj.id);
+                    }
+                    else if (obj.entity.entityType === 'portal') {
+                        // Check if portal requirements are met
+                        if (obj.entity.itemRequirements) {
+                            const eyesRequired = obj.entity.itemRequirements.find(req => req.itemId === 'eye_of_elder')?.quantity || 0;
+                            if ($eyesOfElder >= eyesRequired) {
+                                addGameMessage("You've activated the Elder Portal! Victory!", 'success');
+                                gameOver = true;
+                                setTimeout(() => {
+                                    handleExitTest();
+                                }, 3000);
+                            } else {
+                                addGameMessage(`Portal requires ${eyesRequired} Eyes of Elder. You have ${$eyesOfElder}.`, 'info');
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function calculateDistance(pos1: {x: number, y: number, z: number}, pos2: {x: number, y: number, z: number}) {
+        const dx = pos1.x - pos2.x;
+        const dy = pos1.y - pos2.y;
+        const dz = pos1.z - pos2.z;
+        return Math.sqrt(dx*dx + dy*dy + dz*dz);
+    }
+    
+    function handleMouseClick(event: MouseEvent) {
+        if (!player) return;
+        
+        const rect = canvas.getBoundingClientRect();
+        const x = (event.clientX - rect.left) * (canvas.width / rect.width);
+        const y = (event.clientY - rect.top) * (canvas.height / rect.height);
+        
+        // Find clicked object
+        const clickedObject = findObjectAtPosition(x, y);
+        
+        if (clickedObject) {
+            if (clickedObject.entity) {
+                if (clickedObject.entity.entityType === 'enemy') {
+                    // Attack enemy
+                    if (combat(player, clickedObject)) {
+                        // If enemy defeated, remove from objects array
+                        if (clickedObject.entity.combatStats?.health === 0) {
+                            objects = objects.filter(obj => obj.id !== clickedObject.id);
+                        }
+                    }
+                } else if (clickedObject.entity.entityType === 'npc') {
+                    // Talk to NPC
+                    interactWithNPC(clickedObject);
+                } else if (clickedObject.entity.entityType === 'portal') {
+                    // Try to use portal
+                    if (usePortal(clickedObject)) {
+                        gameOver = true;
+                        setTimeout(() => {
+                            handleExitTest();
+                        }, 3000);
+                    }
+                }
+            }
+        }
+    }
+    
+    function findObjectAtPosition(x: number, y: number): GameObject | null {
+        // In a real implementation, this would use proper collision detection
+        // For now, just use a simple radius check
+        for (let i = objects.length - 1; i >= 0; i--) {
+            const obj = objects[i];
+            if (obj.id === player?.id) continue;
+            
+            const screenPos = isometric ? projectIsometric(obj.position) : obj.position;
+            const distance = Math.sqrt(
+                Math.pow(x - screenPos.x, 2) + 
+                Math.pow(y - screenPos.y, 2)
+            );
+            
+            // Check if within object bounds (simplified)
+            const radius = Math.max(obj.properties.width, obj.properties.height) / 2;
+            if (distance < radius) {
+                return obj;
+            }
+        }
+        
+        return null;
+    }
+    
+    function render() {
+        if (!ctx) return;
+        
+        // Clear canvas with scene background color
+        ctx.fillStyle = scene.backgroundColor || '#87CEEB';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw grid
+        drawGrid();
+        
+        // Sort objects by Y position for proper layering in isometric view
+        const sortedObjects = [...objects].sort((a, b) => {
+            if (isometric) {
+                return a.position.y - b.position.y;
+            }
+            return 0; // No sorting needed for 2D top-down view
+        });
+        
+        // Draw all objects
+        sortedObjects.forEach(object => {
+            if (object.type === '2d') {
+                draw2DObject(object);
+            } else {
+                draw3DObject(object);
+            }
+        });
+        
+        // Draw UI
+        drawGameUI();
+    }
+    
+    function drawGrid() {
+        const gridSize = 50 * zoom;
+        const xOffset = (canvas.width / 2) % gridSize;
+        const yOffset = (canvas.height / 2) % gridSize;
+        
+        ctx.strokeStyle = 'rgba(100, 100, 100, 0.2)';
+        ctx.lineWidth = 1;
+        
+        // Draw horizontal grid lines
+        for (let y = yOffset; y < canvas.height; y += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(canvas.width, y);
+            ctx.stroke();
+        }
+        
+        // Draw vertical grid lines
+        for (let x = xOffset; x < canvas.width; x += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, canvas.height);
+            ctx.stroke();
+        }
+    }
+    
+    function drawGameUI() {
+        // Draw health bar
+        const healthWidth = 200;
+        const healthHeight = 20;
+        const healthX = 20;
+        const healthY = 20;
+        
+        // Health bar background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillRect(healthX, healthY, healthWidth, healthHeight);
+        
+        // Health bar fill
+        const healthPercent = $playerHealth / 100;
+        ctx.fillStyle = healthPercent > 0.6 ? '#4CAF50' : 
+                       healthPercent > 0.3 ? '#FFC107' : '#F44336';
+        ctx.fillRect(healthX, healthY, healthWidth * healthPercent, healthHeight);
+        
+        // Health text
+        ctx.fillStyle = 'white';
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(`HP: ${$playerHealth}/100`, healthX + healthWidth/2, healthY + 15);
+        
+        // Draw inventory
+        drawInventory();
+        
+        // Draw game messages
+        drawGameMessages();
+        
+        // Draw controls help
+        drawControlsHelp();
+    }
+    
+    function drawInventory() {
+        const inventoryX = canvas.width - 220;
+        const inventoryY = 20;
+        const inventoryWidth = 200;
+        const inventoryHeight = 100;
+        
+        // Inventory background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillRect(inventoryX, inventoryY, inventoryWidth, inventoryHeight);
+        
+        // Inventory title
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 14px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText('Inventory', inventoryX + 10, inventoryY + 20);
+        
+        // Inventory items
+        ctx.font = '12px Arial';
+        let y = inventoryY + 40;
+        let itemsShown = 0;
+        
+        for (const [item, quantity] of Object.entries($inventory)) {
+            if (itemsShown >= 4) break; // Show only 4 items
+            
+            ctx.fillText(`${item.replace('_', ' ')}: ${quantity}`, inventoryX + 15, y);
+            y += 15;
+            itemsShown++;
+        }
+        
+        if (Object.keys($inventory).length === 0) {
+            ctx.fillText('Empty', inventoryX + 15, y);
+        }
+    }
+    
+    function drawGameMessages() {
+        const messagesX = 20;
+        const messagesY = canvas.height - 120;
+        const messagesWidth = canvas.width - 40;
+        const messagesHeight = 100;
+        
+        // Messages background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillRect(messagesX, messagesY, messagesWidth, messagesHeight);
+        
+        // Messages
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'left';
+        
+        let y = messagesY + 20;
+        for (const message of $gameMessages) {
+            // Set color based on message type
+            switch (message.type) {
+                case 'success': ctx.fillStyle = '#4CAF50'; break;
+                case 'error': ctx.fillStyle = '#F44336'; break;
+                case 'combat': ctx.fillStyle = '#FFC107'; break;
+                default: ctx.fillStyle = 'white';
+            }
+            
+            ctx.fillText(message.message, messagesX + 10, y);
+            y += 16;
+        }
+    }
+    
+    function drawControlsHelp() {
+        const helpX = 20;
+        const helpY = 50;
+        
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillRect(helpX, helpY, 250, 70);
+        
+        ctx.fillStyle = 'white';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText('Controls:', helpX + 10, helpY + 20);
+        ctx.fillText('WASD - Move character', helpX + 10, helpY + 40);
+        ctx.fillText('Mouse Click - Interact/Attack', helpX + 10, helpY + 60);
+    }
+    
+    function draw2DObject(object: GameObject) {
+        const props = object.properties;
+        ctx.fillStyle = props.color;
+        
+        // Apply camera offset for 2D objects
+        const x = object.position.x - cameraPosition.x;
+        const y = object.position.y - cameraPosition.y;
+        
+        if ('shape' in props) {
+            switch (props.shape) {
+                case 'rectangle':
+                    ctx.fillRect(
+                        x - props.width / 2,
+                        y - props.height / 2,
+                        props.width,
+                        props.height
+                    );
+                    break;
+                    
+                case 'circle':
+                    ctx.beginPath();
+                    ctx.arc(
+                        x,
+                        y,
+                        props.width / 2,
+                        0,
+                        Math.PI * 2
+                    );
+                    ctx.fill();
+                    break;
+                    
+                case 'triangle':
+                    ctx.beginPath();
+                    ctx.moveTo(x, y - props.height/2);
+                    ctx.lineTo(x - props.width/2, y + props.height/2);
+                    ctx.lineTo(x + props.width/2, y + props.height/2);
+                    ctx.closePath();
+                    ctx.fill();
+                    break;
+            }
+        }
+        
+        // Draw entity name if it exists
+        if (object.entity) {
+            ctx.fillStyle = 'white';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(
+                object.entity.displayName,
+                x,
+                y - props.height / 2 - 5
+            );
+            
+            // Draw health bar for enemies
+            if (object.entity.entityType === 'enemy' && object.entity.combatStats) {
+                const maxHealth = object.entity.combatStats.health;
+                const currentHealth = object.entity.combatStats.health;
+                const healthWidth = props.width;
+                const healthHeight = 5;
+                
+                // Health bar background
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.fillRect(
+                    x - healthWidth / 2,
+                    y - props.height / 2 - 15,
+                    healthWidth,
+                    healthHeight
+                );
+                
+                // Health bar fill
+                const healthPercent = currentHealth / maxHealth;
+                ctx.fillStyle = healthPercent > 0.6 ? '#4CAF50' : 
+                               healthPercent > 0.3 ? '#FFC107' : '#F44336';
+                ctx.fillRect(
+                    x - healthWidth / 2,
+                    y - props.height / 2 - 15,
+                    healthWidth * healthPercent,
+                    healthHeight
+                );
+            }
+        }
+        
+        // Highlight player object
+        if (object.id === player?.id) {
+            ctx.strokeStyle = '#4CAF50';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(
+                x - props.width / 2 - 2,
+                y - props.height / 2 - 2,
+                props.width + 4,
+                props.height + 4
+            );
+        }
+    }
+    
+    function draw3DObject(object: GameObject) {
+        const props = object.properties;
+        
+        if (isometric) {
+            // Isometric projection
+            const screenPos = projectIsometric(object.position);
+            
+            // Draw based on shape
+            if ('shape' in props) {
+                switch (props.shape) {
+                    case 'cube':
+                        drawIsometricCube(screenPos.x, screenPos.y, props.width, props.height, props.depth, props.color, object);
+                        break;
+                    case 'sphere':
+                        drawIsometricSphere(screenPos.x, screenPos.y, props.width, props.height, props.color, object);
+                        break;
+                    case 'cylinder':
+                        drawIsometricCylinder(screenPos.x, screenPos.y, props.width, props.height, props.color, object);
+                        break;
+                    case 'cone':
+                        drawIsometricCone(screenPos.x, screenPos.y, props.width, props.height, props.color, object);
+                        break;
+                }
+            }
+            
+            // Draw entity name and health bar
+            if (object.entity) {
+                ctx.fillStyle = 'white';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(
+                    object.entity.displayName,
+                    screenPos.x,
+                    screenPos.y - (props.height * zoom) / 2 - 10
+                );
+                
+                // Draw health bar for enemies
+                if (object.entity.entityType === 'enemy' && object.entity.combatStats) {
+                    const maxHealth = 100; // Using base value for simplicity
+                    const currentHealth = object.entity.combatStats.health;
+                    const healthWidth = 50;
+                    const healthHeight = 5;
+                    
+                    // Health bar background
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                    ctx.fillRect(
+                        screenPos.x - healthWidth / 2,
+                        screenPos.y - (props.height * zoom) / 2 - 20,
+                        healthWidth,
+                        healthHeight
+                    );
+                    
+                    // Health bar fill
+                    const healthPercent = currentHealth / maxHealth;
+                    ctx.fillStyle = healthPercent > 0.6 ? '#4CAF50' : 
+                                   healthPercent > 0.3 ? '#FFC107' : '#F44336';
+                    ctx.fillRect(
+                        screenPos.x - healthWidth / 2,
+                        screenPos.y - (props.height * zoom) / 2 - 20,
+                        healthWidth * healthPercent,
+                        healthHeight
+                    );
+                }
+            }
+            
+            // Highlight player object
+            if (object.id === player?.id) {
+                ctx.strokeStyle = '#4CAF50';
+                ctx.lineWidth = 2;
+                
+                // Draw a highlight circle around the player
+                ctx.beginPath();
+                ctx.arc(screenPos.x, screenPos.y + props.height/4, 
+                        Math.max(props.width, props.depth) * 0.7, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        } else {
+            // Top-down view
+            draw2DObject(object);
+        }
+    }
+    
+    // Project 3D coordinates to 2D isometric view
+    function projectIsometric(pos: { x: number, y: number, z: number }) {
+        // Apply camera position and zoom
+        const x = pos.x - cameraPosition.x;
+        const y = pos.y - cameraPosition.y;
+        const z = pos.z;
+        
+        // Apply rotation
+        const rotationRad = (viewRotationY * Math.PI) / 180;
+        const rotatedX = x * Math.cos(rotationRad) - z * Math.sin(rotationRad);
+        const rotatedZ = x * Math.sin(rotationRad) + z * Math.cos(rotationRad);
+        
+        // Isometric projection
+        const isoX = (rotatedX - rotatedZ) * 0.7 * zoom;
+        const isoY = ((rotatedX + rotatedZ) * 0.4 - y) * zoom;
+        
+        // Center in canvas
+        return {
+            x: canvas.width / 2 + isoX,
+            y: canvas.height / 2 + isoY
+        };
+    }
+    
+    // Drawing functions for 3D objects
+    function drawIsometricCube(x: number, y: number, width: number, height: number, depth: number, color: string, object: GameObject) {
+        const w = width * zoom * 0.7;
+        const h = height * zoom;
+        const d = depth * zoom * 0.7;
+        
+        // Calculate coordinates for the cube
+        const points = {
+            // Front face (bottom left, bottom right, top right, top left)
+            frontBL: { x: x - w/2, y: y + h/2 },
+            frontBR: { x: x + w/2, y: y + h/2 },
+            frontTR: { x: x + w/2, y: y - h/2 },
+            frontTL: { x: x - w/2, y: y - h/2 },
+            
+            // Back face (same order)
+            backBL: { x: x - w/2 - d*0.3, y: y + h/2 - d*0.3 },
+            backBR: { x: x + w/2 - d*0.3, y: y + h/2 - d*0.3 },
+            backTR: { x: x + w/2 - d*0.3, y: y - h/2 - d*0.3 },
+            backTL: { x: x - w/2 - d*0.3, y: y - h/2 - d*0.3 }
+        };
+        
+        // Adjust colors for different faces
+        const topColor = shadeColor(color, 30);
+        const rightColor = shadeColor(color, -15);
+        const frontColor = color;
+        
+        // Draw the three visible faces of the cube
+        
+        // Top face
+        ctx.fillStyle = topColor;
+        ctx.beginPath();
+        ctx.moveTo(points.frontTL.x, points.frontTL.y);
+        ctx.lineTo(points.frontTR.x, points.frontTR.y);
+        ctx.lineTo(points.backTR.x, points.backTR.y);
+        ctx.lineTo(points.backTL.x, points.backTL.y);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Right face
+        ctx.fillStyle = rightColor;
+        ctx.beginPath();
+        ctx.moveTo(points.frontTR.x, points.frontTR.y);
+        ctx.lineTo(points.frontBR.x, points.frontBR.y);
+        ctx.lineTo(points.backBR.x, points.backBR.y);
+        ctx.lineTo(points.backTR.x, points.backTR.y);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Front face
+        ctx.fillStyle = frontColor;
+        ctx.beginPath();
+        ctx.moveTo(points.frontBL.x, points.frontBL.y);
+        ctx.lineTo(points.frontBR.x, points.frontBR.y);
+        ctx.lineTo(points.frontTR.x, points.frontTR.y);
+        ctx.lineTo(points.frontTL.x, points.frontTL.y);
+        ctx.closePath();
+        ctx.fill();
+    }
+    
+    function drawIsometricSphere(x: number, y: number, width: number, height: number, color: string, object: GameObject) {
+        const radius = width * zoom * 0.4;
+        
+        // Draw the sphere (as a circle with a gradient)
+        const gradient = ctx.createRadialGradient(
+            x - radius * 0.2, 
+            y - radius * 0.2, 
+            0,
+            x, 
+            y, 
+            radius
+        );
+        gradient.addColorStop(0, shadeColor(color, 30));
+        gradient.addColorStop(1, shadeColor(color, -20));
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Add a highlight
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.beginPath();
+        ctx.arc(x - radius * 0.3, y - radius * 0.3, radius * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    
+    function drawIsometricCylinder(x: number, y: number, width: number, height: number, color: string, object: GameObject) {
+        const w = width * zoom * 0.5;
+        const h = height * zoom;
+        
+        // Draw the cylinder's top ellipse
+        ctx.fillStyle = shadeColor(color, 30);
+        ctx.beginPath();
+        ctx.ellipse(x, y - h/2, w, w * 0.6, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Draw the cylinder's body
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.ellipse(x, y + h/2, w, w * 0.6, 0, Math.PI, Math.PI * 2);
+        ctx.lineTo(x + w, y - h/2);
+        ctx.ellipse(x, y - h/2, w, w * 0.6, 0, 0, Math.PI);
+        ctx.lineTo(x - w, y + h/2);
+        ctx.fill();
+        
+        // Draw the cylinder's bottom ellipse
+        ctx.fillStyle = shadeColor(color, -15);
+        ctx.beginPath();
+        ctx.ellipse(x, y + h/2, w, w * 0.6, 0, 0, Math.PI);
+        ctx.fill();
+    }
+    
+    function drawIsometricCone(x: number, y: number, width: number, height: number, color: string, object: GameObject) {
+        const w = width * zoom * 0.5;
+        const h = height * zoom;
+        
+        // Draw the cone's base
+        ctx.fillStyle = shadeColor(color, -15);
+        ctx.beginPath();
+        ctx.ellipse(x, y + h/2, w, w * 0.6, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Draw the cone's body
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.ellipse(x, y + h/2, w, w * 0.6, 0, 0, Math.PI * 2);
+        ctx.moveTo(x + w, y + h/2);
+        ctx.lineTo(x, y - h/2);
+        ctx.lineTo(x - w, y + h/2);
+        ctx.fill();
+    }
+    
+    // Helper to adjust color brightness
+    function shadeColor(color: string, percent: number) {
+        const num = parseInt(color.replace('#', ''), 16);
+        const amt = Math.round(2.55 * percent);
+        const R = (num >> 16) + amt;
+        const G = (num >> 8 & 0x00FF) + amt;
+        const B = (num & 0x0000FF) + amt;
+        return '#' + (
+            0x1000000 +
+            (R < 255 ? (R < 0 ? 0 : R) : 255) * 0x10000 +
+            (G < 255 ? (G < 0 ? 0 : G) : 255) * 0x100 +
+            (B < 255 ? (B < 0 ? 0 : B) : 255)
+        ).toString(16).slice(1);
+    }
+    
+    function handleExitTest() {
+        endGameTest();
+    }
+</script>
+
+<div class="game-container">
+    <canvas
+        bind:this={canvas}
+        width={800}
+        height={600}
+        class="game-canvas"
+        on:click={handleMouseClick}
+        tabindex="0"
+    >
+    </canvas>
+    
+    <div class="exit-button">
+        <button on:click={handleExitTest}>Exit Test Mode</button>
+    </div>
+</div>
+
+<style>
+    .game-container {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        background: #000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .game-canvas {
+        display: block;
+        background: #87CEEB;
+        outline: none;
+        width: 100%;
+        height: 100%;
+    }
+    
+    .exit-button {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 100;
+    }
+    
+    .exit-button button {
+        background: #e74c3c;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+    
+    .exit-button button:hover {
+        background: #c0392b;
+    }
+</style>

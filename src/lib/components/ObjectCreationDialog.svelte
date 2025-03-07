@@ -3,44 +3,43 @@
     import { createEventDispatcher } from 'svelte';
 
     export let isOpen = false;
-    export let mode: '2d' | '3d';
+    export let mode: '2d' | '3d' = '2d';
 
     const dispatch = createEventDispatcher<{
         close: void;
         create: GameObject;
     }>();
 
-    let name = '';
-    let position = mode === '2d' ? { x: 100, y: 100 } : { x: 100, y: 100, z: 0 };
-    let shape: Shape2D | Shape3D = mode === '2d' ? 'rectangle' : 'cube';
-    let color = '#ff0000';
+    let selectedShape = 'rectangle';
     let width = 50;
     let height = 50;
+    let color = '#ff0000';
     let depth = 50;
 
     const shapes2D: Shape2D[] = ['rectangle', 'circle', 'triangle'];
     const shapes3D: Shape3D[] = ['cube', 'sphere', 'cylinder', 'cone'];
 
-    function handleCreate() {
+    function handleSubmit() {
+        const objectName = `${selectedShape}_${Date.now()}`;
         const properties = mode === '2d' 
             ? {
                 width,
                 height,
                 color,
-                shape: shape as Shape2D
+                shape: selectedShape as Shape2D
             } as ObjectProperties2D
             : {
                 width,
                 height,
                 depth,
                 color,
-                shape: shape as Shape3D
+                shape: selectedShape as Shape3D
             } as ObjectProperties3D;
 
         const object: GameObject = {
             id: crypto.randomUUID(),
-            name,
-            position,
+            name: objectName,
+            position: { x: 400, y: 300, z: 0 },
             type: mode,
             properties,
             components: []
@@ -54,14 +53,11 @@
     function handleClose() {
         dispatch('close');
         isOpen = false;
-        // Reset form
-        name = '';
-        position = mode === '2d' ? { x: 100, y: 100 } : { x: 100, y: 100, z: 0 };
-        shape = mode === '2d' ? 'rectangle' : 'cube';
-        color = '#ff0000';
+        selectedShape = 'rectangle';
         width = 50;
         height = 50;
         depth = 50;
+        color = '#ff0000';
     }
 </script>
 
@@ -69,20 +65,10 @@
     <div class="dialog-overlay" on:click={handleClose}>
         <div class="dialog" on:click|stopPropagation>
             <h2>Create New {mode.toUpperCase()} Object</h2>
-            <form on:submit|preventDefault={handleCreate}>
+            <form on:submit|preventDefault={handleSubmit}>
                 <div class="form-group">
-                    <label for="object-name">Name:</label>
-                    <input 
-                        id="object-name"
-                        type="text" 
-                        bind:value={name}
-                        required
-                    />
-                </div>
-
-                <div class="form-group">
-                    <label for="object-shape">Shape:</label>
-                    <select id="object-shape" bind:value={shape}>
+                    <label for="shape">Shape:</label>
+                    <select id="shape" bind:value={selectedShape}>
                         {#if mode === '2d'}
                             {#each shapes2D as shapeOption}
                                 <option value={shapeOption}>{shapeOption}</option>

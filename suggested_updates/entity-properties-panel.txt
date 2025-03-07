@@ -1,0 +1,504 @@
+<script lang="ts">
+    import type { GameObject, ItemDrop } from '$lib/types/GameTypes';
+    import { activeScene, updateScene } from '$lib/stores/gameStore';
+    
+    export let selectedObject: GameObject | null;
+    
+    let newItemId = '';
+    let newDropRate = 10;
+    let newMinQuantity = 1;
+    let newMaxQuantity = 1;
+    
+    function addItemDrop() {
+        if (!selectedObject || !selectedObject.entity || !newItemId) return;
+        
+        const newDrop: ItemDrop = {
+            itemId: newItemId,
+            dropRate: newDropRate,
+            minQuantity: newMinQuantity,
+            maxQuantity: newMaxQuantity
+        };
+        
+        if (!selectedObject.entity.drops) {
+            selectedObject.entity.drops = [];
+        }
+        
+        selectedObject.entity.drops.push(newDrop);
+        
+        // Update the scene
+        updateScene($activeScene!);
+        
+        // Reset form
+        newItemId = '';
+        newDropRate = 10;
+        newMinQuantity = 1;
+        newMaxQuantity = 1;
+    }
+    
+    function removeItemDrop(index: number) {
+        if (!selectedObject || !selectedObject.entity || !selectedObject.entity.drops) return;
+        
+        selectedObject.entity.drops.splice(index, 1);
+        
+        // Update the scene
+        updateScene($activeScene!);
+    }
+    
+    function updateEntityProperty(path: string, value: any) {
+        if (!selectedObject) return;
+        
+        // Split the path into parts (e.g., "entity.combatStats.health" => ["entity", "combatStats", "health"])
+        const parts = path.split('.');
+        let current: any = selectedObject;
+        
+        // Navigate to the parent object of the property we want to update
+        for (let i = 0; i < parts.length - 1; i++) {
+            if (!current[parts[i]]) {
+                current[parts[i]] = {};
+            }
+            current = current[parts[i]];
+        }
+        
+        // Update the property
+        current[parts[parts.length - 1]] = value;
+        
+        // Update the scene
+        updateScene($activeScene!);
+    }
+</script>
+
+{#if selectedObject && selectedObject.entity}
+    <div class="entity-properties">
+        <h3>Entity Properties</h3>
+        
+        <div class="property">
+            <label for="entity-type">Entity Type:</label>
+            <span class="entity-type-badge" data-type={selectedObject.entity.entityType}>
+                {selectedObject.entity.entityType.toUpperCase()}
+            </span>
+        </div>
+        
+        <div class="property">
+            <label for="entity-name">Display Name:</label>
+            <input 
+                id="entity-name"
+                type="text" 
+                value={selectedObject.entity.displayName}
+                on:input={(e) => updateEntityProperty('entity.displayName', e.currentTarget.value)}
+            />
+        </div>
+        
+        <div class="property">
+            <label for="entity-description">Description:</label>
+            <textarea 
+                id="entity-description"
+                rows="2" 
+                value={selectedObject.entity.description || ''}
+                on:input={(e) => updateEntityProperty('entity.description', e.currentTarget.value)}
+            ></textarea>
+        </div>
+        
+        {#if selectedObject.entity.template}
+            <div class="property">
+                <label>Template:</label>
+                <span class="template-badge">
+                    {selectedObject.entity.template.replace('_', ' ')}
+                </span>
+            </div>
+        {/if}
+        
+        {#if selectedObject.entity.entityType === 'hero' || selectedObject.entity.entityType === 'enemy'}
+            <h4>Combat Stats</h4>
+            
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <label for="stat-health">Health:</label>
+                    <input 
+                        id="stat-health"
+                        type="number" 
+                        value={selectedObject.entity.combatStats?.health || 0}
+                        min="1"
+                        on:input={(e) => updateEntityProperty('entity.combatStats.health', parseInt(e.currentTarget.value))}
+                    />
+                </div>
+                
+                <div class="stat-item">
+                    <label for="stat-attack">Attack:</label>
+                    <input 
+                        id="stat-attack"
+                        type="number" 
+                        value={selectedObject.entity.combatStats?.attack || 0}
+                        min="0"
+                        on:input={(e) => updateEntityProperty('entity.combatStats.attack', parseInt(e.currentTarget.value))}
+                    />
+                </div>
+                
+                <div class="stat-item">
+                    <label for="stat-defense">Defense:</label>
+                    <input 
+                        id="stat-defense"
+                        type="number" 
+                        value={selectedObject.entity.combatStats?.defense || 0}
+                        min="0"
+                        on:input={(e) => updateEntityProperty('entity.combatStats.defense', parseInt(e.currentTarget.value))}
+                    />
+                </div>
+                
+                <div class="stat-item">
+                    <label for="stat-speed">Speed:</label>
+                    <input 
+                        id="stat-speed"
+                        type="number" 
+                        value={selectedObject.entity.combatStats?.speed || 0}
+                        min="1"
+                        on:input={(e) => updateEntityProperty('entity.combatStats.speed', parseInt(e.currentTarget.value))}
+                    />
+                </div>
+            </div>
+            
+            <div class="property">
+                <label for="special-ability">Special Ability:</label>
+                <input 
+                    id="special-ability"
+                    type="text" 
+                    value={selectedObject.entity.combatStats?.specialAbility || ''}
+                    placeholder="Enter special ability"
+                    on:input={(e) => updateEntityProperty('entity.combatStats.specialAbility', e.currentTarget.value)}
+                />
+            </div>
+        {/if}
+        
+        {#if selectedObject.entity.entityType === 'enemy'}
+            <h4>Item Drops</h4>
+            
+            {#if selectedObject.entity.drops && selectedObject.entity.drops.length > 0}
+                <div class="drops-list">
+                    {#each selectedObject.entity.drops as drop, index}
+                        <div class="drop-item">
+                            <div class="drop-info">
+                                <span class="drop-name">{drop.itemId.replace('_', ' ')}</span>
+                                <span class="drop-rate">{drop.dropRate}% drop rate</span>
+                                <span class="drop-quantity">
+                                    {drop.minQuantity === drop.maxQuantity 
+                                        ? `${drop.minQuantity} item` 
+                                        : `${drop.minQuantity}-${drop.maxQuantity} items`}
+                                </span>
+                            </div>
+                            <button class="remove-btn" on:click={() => removeItemDrop(index)}>×</button>
+                        </div>
+                    {/each}
+                </div>
+            {:else}
+                <p class="info-text">No items are set to drop from this enemy.</p>
+            {/if}
+            
+            <div class="add-drop-form">
+                <h5>Add Item Drop</h5>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="drop-item">Item:</label>
+                        <select 
+                            id="drop-item" 
+                            bind:value={newItemId}
+                        >
+                            <option value="">Select item...</option>
+                            <option value="weapon">Weapon</option>
+                            <option value="armor">Armor</option>
+                            <option value="potion">Potion</option>
+                            <option value="key">Key</option>
+                            <option value="eye_of_elder">Eye of Elder</option>
+                            <option value="custom">Custom Item</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="drop-rate">Drop Rate (%):</label>
+                        <input 
+                            id="drop-rate"
+                            type="number" 
+                            bind:value={newDropRate}
+                            min="1"
+                            max="100"
+                        />
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="min-quantity">Min Qty:</label>
+                        <input 
+                            id="min-quantity"
+                            type="number" 
+                            bind:value={newMinQuantity}
+                            min="1"
+                        />
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="max-quantity">Max Qty:</label>
+                        <input 
+                            id="max-quantity"
+                            type="number" 
+                            bind:value={newMaxQuantity}
+                            min="1"
+                        />
+                    </div>
+                    
+                    <button 
+                        class="add-btn"
+                        disabled={!newItemId} 
+                        on:click={addItemDrop}
+                    >
+                        Add
+                    </button>
+                </div>
+            </div>
+        {/if}
+        
+        {#if selectedObject.entity.entityType === 'npc'}
+            <h4>NPC Properties</h4>
+            
+            <div class="property checkbox-group">
+                <label>
+                    <input 
+                        type="checkbox" 
+                        checked={selectedObject.entity.interactable || false}
+                        on:change={(e) => updateEntityProperty('entity.interactable', e.currentTarget.checked)}
+                    />
+                    Player can interact
+                </label>
+            </div>
+            
+            {#if selectedObject.entity.interactable}
+                <div class="property">
+                    <label for="dialogue-id">Dialogue ID:</label>
+                    <input 
+                        id="dialogue-id"
+                        type="text" 
+                        value={selectedObject.entity.dialogueId || ''}
+                        placeholder="Enter dialogue ID"
+                        on:input={(e) => updateEntityProperty('entity.dialogueId', e.currentTarget.value)}
+                    />
+                </div>
+                
+                <div class="property">
+                    <label for="quest-id">Quest ID:</label>
+                    <input 
+                        id="quest-id"
+                        type="text" 
+                        value={selectedObject.entity.questId || ''}
+                        placeholder="Enter quest ID"
+                        on:input={(e) => updateEntityProperty('entity.questId', e.currentTarget.value)}
+                    />
+                </div>
+            {/if}
+        {/if}
+        
+        {#if selectedObject.entity.entityType === 'portal'}
+            <h4>Portal Requirements</h4>
+            
+            {#if selectedObject.entity.itemRequirements && selectedObject.entity.itemRequirements.length > 0}
+                <div class="requirements-list">
+                    {#each selectedObject.entity.itemRequirements as req}
+                        <div class="requirement-item">
+                            <span class="req-name">{req.quantity} × {req.itemId.replace('_', ' ')}</span>
+                        </div>
+                    {/each}
+                </div>
+            {:else}
+                <p class="info-text">No requirements set for this portal.</p>
+            {/if}
+        {/if}
+    </div>
+{/if}
+
+<style>
+    .entity-properties {
+        margin-top: 1rem;
+    }
+    
+    h3, h4, h5 {
+        margin-top: 1.5rem;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.25rem;
+        border-bottom: 1px solid #444;
+        color: #ddd;
+    }
+    
+    h4 {
+        font-size: 1rem;
+        margin-top: 1.25rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    h5 {
+        font-size: 0.9rem;
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
+        border-bottom: none;
+    }
+    
+    .property {
+        margin-bottom: 1rem;
+    }
+    
+    .property label {
+        display: block;
+        margin-bottom: 0.25rem;
+        color: #aaa;
+    }
+    
+    .checkbox-group label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #ddd;
+    }
+    
+    input, select, textarea {
+        width: 100%;
+        padding: 0.5rem;
+        background: #333;
+        border: 1px solid #444;
+        color: white;
+        border-radius: 4px;
+    }
+    
+    input[type="checkbox"] {
+        width: auto;
+    }
+    
+    textarea {
+        resize: vertical;
+    }
+    
+    .entity-type-badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-weight: bold;
+        font-size: 0.9rem;
+        color: white;
+    }
+    
+    .entity-type-badge[data-type="hero"] {
+        background-color: #4287f5;
+    }
+    
+    .entity-type-badge[data-type="enemy"] {
+        background-color: #f54242;
+    }
+    
+    .entity-type-badge[data-type="npc"] {
+        background-color: #42f59e;
+    }
+    
+    .entity-type-badge[data-type="item"] {
+        background-color: #f5d742;
+    }
+    
+    .entity-type-badge[data-type="portal"] {
+        background-color: #9b42f5;
+    }
+    
+    .template-badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        background-color: #555;
+        border-radius: 4px;
+        font-size: 0.9rem;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .stats-grid input {
+        padding: 0.35rem 0.5rem;
+        font-size: 0.9rem;
+    }
+    
+    .drops-list, .requirements-list {
+        margin-bottom: 1rem;
+    }
+    
+    .drop-item, .requirement-item {
+        background: #333;
+        padding: 0.5rem;
+        border-radius: 4px;
+        margin-bottom: 0.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .drop-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .drop-name, .req-name {
+        font-weight: bold;
+        color: #ddd;
+    }
+    
+    .drop-rate, .drop-quantity {
+        font-size: 0.8rem;
+        color: #aaa;
+    }
+    
+    .info-text {
+        background: #333;
+        padding: 0.5rem;
+        border-radius: 4px;
+        color: #aaa;
+        font-style: italic;
+        font-size: 0.9rem;
+    }
+    
+    .add-drop-form {
+        background: #2a2a2a;
+        padding: 0.75rem;
+        border-radius: 4px;
+        margin-top: 1rem;
+    }
+    
+    .form-row {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .form-group {
+        flex: 1;
+    }
+    
+    .add-btn, .remove-btn {
+        padding: 0.35rem 0.75rem;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        align-self: flex-end;
+    }
+    
+    .add-btn {
+        background: #4c7dff;
+        color: white;
+    }
+    
+    .add-btn:disabled {
+        background: #555;
+        cursor: not-allowed;
+    }
+    
+    .remove-btn {
+        background: #f54242;
+        color: white;
+        align-self: center;
+    }
+</style>
