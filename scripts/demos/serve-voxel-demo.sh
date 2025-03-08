@@ -12,7 +12,7 @@ pkill -f "http-server" || true
 
 # Start the development server for the actual demo
 echo "Starting development server for the voxel demo..."
-npm run dev > /dev/null 2>&1 &
+npm run dev -- --host 0.0.0.0 > /dev/null 2>&1 &
 DEV_PID=$!
 
 # Wait for the server to start
@@ -22,7 +22,7 @@ sleep 5
 # Start the http-server for the demo page
 echo "Starting http-server for the demo page..."
 cd demos
-npx http-server -p 8080 &
+npx http-server -p 8080 --host 0.0.0.0 &
 HTTP_SERVER_PID=$!
 
 echo "Demo page is available at http://localhost:8080/voxel-engine/"

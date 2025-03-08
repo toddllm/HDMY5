@@ -13,7 +13,7 @@ pkill -f "node.*vite" || true
 
 # Start the development server for the actual demos
 echo "Starting development server for the demos..."
-npm run dev > /dev/null 2>&1 &
+npm run dev -- --host 0.0.0.0 > /dev/null 2>&1 &
 DEV_PID=$!
 
 # Wait for the server to start
@@ -23,7 +23,7 @@ sleep 5
 # Start the http-server for the demo pages
 echo "Starting http-server for the demo pages..."
 cd demos
-npx http-server -p 8080 &
+npx http-server -p 8080 --host 0.0.0.0 &
 HTTP_SERVER_PID=$!
 
 echo "Demo pages are available at http://localhost:8080/"
