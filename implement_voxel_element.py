@@ -226,10 +226,11 @@ def main(analysis_file):
 </style>
 """)
     
-    # Save a timestamped copy of the route file for reference
-    timestamped_route_file = f"src/routes/custom-voxel/+page_{timestamp}.svelte"
+    # Save a timestamped copy of the route file for reference (without the + prefix)
+    timestamped_route_file = f"src/routes/custom-voxel/page_archive_{timestamp}.svelte"
     with open(timestamped_route_file, 'w') as f:
-        f.write(f"""<script lang="ts">
+        f.write(f"""<!-- Archived version of +page.svelte - Not a route, just for reference -->
+<script lang="ts">
     import CustomVoxelElement from '$lib/components/voxel/CustomVoxelElement_{timestamp}.svelte';
     import VoxelGameCanvas from '$lib/components/voxel/VoxelGameCanvas.svelte';
 </script>
