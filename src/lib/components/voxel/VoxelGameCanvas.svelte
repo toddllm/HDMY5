@@ -1,327 +1,40 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { voxelGameStore, type VoxelType } from '../../stores/voxel/voxelGameStore';
+    import { voxelGameStore } from '../../stores/voxel/voxelGameStore';
     
     let canvasElement: HTMLCanvasElement;
-    let gl: WebGLRenderingContext | null = null;
-    let program: WebGLProgram | null = null;
-    
-    // Shader sources
-    const vertexShaderSource = `
-        attribute vec3 aPosition;
-        attribute vec3 aColor;
-        uniform mat4 uModelViewMatrix;
-        uniform mat4 uProjectionMatrix;
-        varying vec3 vColor;
-        
-        void main() {
-            gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(aPosition, 1.0);
-            vColor = aColor;
-        }
-    `;
-    
-    const fragmentShaderSource = `
-        precision mediump float;
-        varying vec3 vColor;
-        
-        void main() {
-            gl_FragColor = vec4(vColor, 1.0);
-        }
-    `;
-    
-    // Matrices
-    let projectionMatrix = new Float32Array(16);
-    let modelViewMatrix = new Float32Array(16);
+    let ctx: CanvasRenderingContext2D | null = null;
     
     // Camera position and rotation
-    let cameraPosition = { x: 0, y: 0, z: 5 };
+    let cameraPosition = { x: 0, y: 2, z: 5 };
     let cameraRotation = { yaw: 0, pitch: 0 };
     
-    // Buffers
-    let positionBuffer: WebGLBuffer | null = null;
-    let colorBuffer: WebGLBuffer | null = null;
+    // Grid settings
+    const gridSize = 20;
+    const cellSize = 30;
     
-    // Initialize WebGL
-    function initWebGL() {
-        gl = canvasElement.getContext('webgl');
-        if (!gl) {
-            console.error('WebGL not supported');
-            return false;
-        }
-        
-        // Create shader program
-        const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
-        const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
-        
-        if (!vertexShader || !fragmentShader) {
-            return false;
-        }
-        
-        program = createProgram(gl, vertexShader, fragmentShader);
-        
-        if (!program) {
-            return false;
-        }
-        
-        // Create buffers
-        positionBuffer = gl.createBuffer();
-        colorBuffer = gl.createBuffer();
-        
-        // Set clear color (sky blue)
-        gl.clearColor(0.5, 0.7, 1.0, 1.0);
-        
-        // Enable depth testing
-        gl.enable(gl.DEPTH_TEST);
-        
-        return true;
-    }
-    
-    // Create a shader
-    function createShader(gl: WebGLRenderingContext, type: number, source: string) {
-        const shader = gl.createShader(type);
-        if (!shader) {
-            console.error('Failed to create shader');
-            return null;
-        }
-        
-        gl.shaderSource(shader, source);
-        gl.compileShader(shader);
-        
-        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-            console.error('Shader compilation error:', gl.getShaderInfoLog(shader));
-            gl.deleteShader(shader);
-            return null;
-        }
-        
-        return shader;
-    }
-    
-    // Create a shader program
-    function createProgram(gl: WebGLRenderingContext, vertexShader: WebGLShader, fragmentShader: WebGLShader) {
-        const program = gl.createProgram();
-        if (!program) {
-            console.error('Failed to create program');
-            return null;
-        }
-        
-        gl.attachShader(program, vertexShader);
-        gl.attachShader(program, fragmentShader);
-        gl.linkProgram(program);
-        
-        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-            console.error('Program linking error:', gl.getProgramInfoLog(program));
-            gl.deleteProgram(program);
-            return null;
-        }
-        
-        return program;
-    }
-    
-    // Create a simple cube
-    function createCube(x: number, y: number, z: number, size: number, color: [number, number, number]) {
-        const positions = [
-            // Front face
-            x - size, y - size, z + size,
-            x + size, y - size, z + size,
-            x + size, y + size, z + size,
-            x - size, y + size, z + size,
-            
-            // Back face
-            x - size, y - size, z - size,
-            x - size, y + size, z - size,
-            x + size, y + size, z - size,
-            x + size, y - size, z - size,
-            
-            // Top face
-            x - size, y + size, z - size,
-            x - size, y + size, z + size,
-            x + size, y + size, z + size,
-            x + size, y + size, z - size,
-            
-            // Bottom face
-            x - size, y - size, z - size,
-            x + size, y - size, z - size,
-            x + size, y - size, z + size,
-            x - size, y - size, z + size,
-            
-            // Right face
-            x + size, y - size, z - size,
-            x + size, y + size, z - size,
-            x + size, y + size, z + size,
-            x + size, y - size, z + size,
-            
-            // Left face
-            x - size, y - size, z - size,
-            x - size, y - size, z + size,
-            x - size, y + size, z + size,
-            x - size, y + size, z - size
-        ];
-        
-        const indices = [
-            0, 1, 2, 0, 2, 3,       // Front face
-            4, 5, 6, 4, 6, 7,       // Back face
-            8, 9, 10, 8, 10, 11,    // Top face
-            12, 13, 14, 12, 14, 15, // Bottom face
-            16, 17, 18, 16, 18, 19, // Right face
-            20, 21, 22, 20, 22, 23  // Left face
-        ];
-        
-        const vertexPositions = [];
-        for (const i of indices) {
-            vertexPositions.push(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
-        }
-        
-        const colors = [];
-        for (let i = 0; i < 36; i++) {
-            colors.push(...color);
-        }
-        
-        return { positions: vertexPositions, colors };
-    }
-    
-    // Create a perspective matrix
-    function perspective(fieldOfView: number, aspect: number, near: number, far: number) {
-        const f = Math.tan(Math.PI * 0.5 - 0.5 * fieldOfView);
-        const rangeInv = 1.0 / (near - far);
-        
-        return [
-            f / aspect, 0, 0, 0,
-            0, f, 0, 0,
-            0, 0, (near + far) * rangeInv, -1,
-            0, 0, near * far * rangeInv * 2, 0
-        ];
-    }
-    
-    // Create a model-view matrix
-    function createModelViewMatrix() {
-        // Convert rotation to radians
-        const yawRad = cameraRotation.yaw * Math.PI / 180;
-        const pitchRad = cameraRotation.pitch * Math.PI / 180;
-        
-        // Calculate direction vector
-        const dx = Math.sin(yawRad) * Math.cos(pitchRad);
-        const dy = Math.sin(pitchRad);
-        const dz = Math.cos(yawRad) * Math.cos(pitchRad);
-        
-        // Calculate camera target
-        const target = {
-            x: cameraPosition.x + dx,
-            y: cameraPosition.y + dy,
-            z: cameraPosition.z + dz
-        };
-        
-        // Create look-at matrix
-        const up = [0, 1, 0];
-        const eye = [cameraPosition.x, cameraPosition.y, cameraPosition.z];
-        const center = [target.x, target.y, target.z];
-        
-        const z0 = eye[0] - center[0];
-        const z1 = eye[1] - center[1];
-        const z2 = eye[2] - center[2];
-        
-        // Normalize z
-        let len = Math.sqrt(z0 * z0 + z1 * z1 + z2 * z2);
-        if (len > 0) {
-            len = 1 / len;
-            z0 *= len;
-            z1 *= len;
-            z2 *= len;
-        }
-        
-        // Cross product of up and z to get x
-        const x0 = up[1] * z2 - up[2] * z1;
-        const x1 = up[2] * z0 - up[0] * z2;
-        const x2 = up[0] * z1 - up[1] * z0;
-        
-        // Normalize x
-        len = Math.sqrt(x0 * x0 + x1 * x1 + x2 * x2);
-        if (len > 0) {
-            len = 1 / len;
-            x0 *= len;
-            x1 *= len;
-            x2 *= len;
-        }
-        
-        // Cross product of z and x to get y
-        const y0 = z1 * x2 - z2 * x1;
-        const y1 = z2 * x0 - z0 * x2;
-        const y2 = z0 * x1 - z1 * x0;
-        
-        // Set model-view matrix
-        return [
-            x0, y0, z0, 0,
-            x1, y1, z1, 0,
-            x2, y2, z2, 0,
-            -(x0 * eye[0] + x1 * eye[1] + x2 * eye[2]),
-            -(y0 * eye[0] + y1 * eye[1] + y2 * eye[2]),
-            -(z0 * eye[0] + z1 * eye[1] + z2 * eye[2]),
-            1
-        ];
-    }
-    
-    // Render the scene
-    function render() {
-        if (!gl || !program) return;
-        
-        // Clear the canvas
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        
-        // Set up viewport
-        gl.viewport(0, 0, canvasElement.width, canvasElement.height);
-        
-        // Use shader program
-        gl.useProgram(program);
-        
-        // Create a cube
-        const cube = createCube(0, 0, 0, 0.5, [0.5, 0.5, 0.5]);
-        
-        // Set up position buffer
-        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cube.positions), gl.STATIC_DRAW);
-        
-        const positionAttribLocation = gl.getAttribLocation(program, 'aPosition');
-        gl.enableVertexAttribArray(positionAttribLocation);
-        gl.vertexAttribPointer(positionAttribLocation, 3, gl.FLOAT, false, 0, 0);
-        
-        // Set up color buffer
-        gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cube.colors), gl.STATIC_DRAW);
-        
-        const colorAttribLocation = gl.getAttribLocation(program, 'aColor');
-        gl.enableVertexAttribArray(colorAttribLocation);
-        gl.vertexAttribPointer(colorAttribLocation, 3, gl.FLOAT, false, 0, 0);
-        
-        // Set up matrices
-        const aspect = canvasElement.width / canvasElement.height;
-        projectionMatrix = new Float32Array(perspective(45 * Math.PI / 180, aspect, 0.1, 100.0));
-        modelViewMatrix = new Float32Array(createModelViewMatrix());
-        
-        const projectionMatrixLocation = gl.getUniformLocation(program, 'uProjectionMatrix');
-        const modelViewMatrixLocation = gl.getUniformLocation(program, 'uModelViewMatrix');
-        
-        gl.uniformMatrix4fv(projectionMatrixLocation, false, projectionMatrix);
-        gl.uniformMatrix4fv(modelViewMatrixLocation, false, modelViewMatrix);
-        
-        // Draw the cube
-        gl.drawArrays(gl.TRIANGLES, 0, 36);
-    }
+    // Colors
+    const colors = {
+        sky: '#87CEEB',
+        ground: '#8B4513',
+        grid: '#FFFFFF',
+        player: '#FF0000',
+        text: '#FFFFFF'
+    };
     
     // Handle keyboard input
     function handleKeyDown(event: KeyboardEvent) {
-        const speed = 0.1;
-        
-        // Convert rotation to radians
-        const yawRad = cameraRotation.yaw * Math.PI / 180;
+        const speed = 0.5;
         
         // Calculate movement direction
         const forward = {
-            x: Math.sin(yawRad),
-            z: Math.cos(yawRad)
+            x: Math.sin(cameraRotation.yaw * Math.PI / 180),
+            z: Math.cos(cameraRotation.yaw * Math.PI / 180)
         };
         
         const right = {
-            x: Math.sin(yawRad + Math.PI / 2),
-            z: Math.cos(yawRad + Math.PI / 2)
+            x: Math.sin((cameraRotation.yaw + 90) * Math.PI / 180),
+            z: Math.cos((cameraRotation.yaw + 90) * Math.PI / 180)
         };
         
         // Handle movement keys
@@ -349,16 +62,31 @@
                 cameraPosition.y -= speed;
                 break;
         }
+        
+        // Update the store
+        voxelGameStore.update(state => ({
+            ...state,
+            playerPosition: { ...cameraPosition }
+        }));
+        
+        // Redraw
+        render();
     }
     
     // Handle mouse movement
     function handleMouseMove(event: MouseEvent) {
         if (document.pointerLockElement === canvasElement) {
-            cameraRotation.yaw += event.movementX * 0.1;
-            cameraRotation.pitch -= event.movementY * 0.1;
+            cameraRotation.yaw = (cameraRotation.yaw + event.movementX * 0.5) % 360;
+            cameraRotation.pitch = Math.max(-89, Math.min(89, cameraRotation.pitch - event.movementY * 0.5));
             
-            // Clamp pitch to avoid flipping
-            cameraRotation.pitch = Math.max(-89, Math.min(89, cameraRotation.pitch));
+            // Update the store
+            voxelGameStore.update(state => ({
+                ...state,
+                playerRotation: { ...cameraRotation }
+            }));
+            
+            // Redraw
+            render();
         }
     }
     
@@ -367,47 +95,118 @@
         canvasElement.requestPointerLock();
     }
     
-    onMount(() => {
-        // Set canvas size
+    // Render the scene
+    function render() {
+        if (!ctx) return;
+        
+        const width = canvasElement.width;
+        const height = canvasElement.height;
+        
+        // Clear canvas
+        ctx.fillStyle = colors.sky;
+        ctx.fillRect(0, 0, width, height);
+        
+        // Draw ground
+        ctx.fillStyle = colors.ground;
+        ctx.fillRect(0, height / 2, width, height / 2);
+        
+        // Draw grid
+        ctx.strokeStyle = colors.grid;
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.3;
+        
+        // Calculate grid offset based on camera position
+        const offsetX = (cameraPosition.x * cellSize) % cellSize;
+        const offsetZ = (cameraPosition.z * cellSize) % cellSize;
+        
+        // Draw vertical grid lines
+        for (let i = -gridSize; i <= gridSize; i++) {
+            const x = width / 2 + i * cellSize - offsetX;
+            ctx.beginPath();
+            ctx.moveTo(x, height / 2);
+            ctx.lineTo(x, height);
+            ctx.stroke();
+        }
+        
+        // Draw horizontal grid lines
+        for (let i = 0; i <= gridSize; i++) {
+            const y = height / 2 + i * cellSize - offsetZ;
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(width, y);
+            ctx.stroke();
+        }
+        
+        ctx.globalAlpha = 1.0;
+        
+        // Draw player position indicator
+        ctx.fillStyle = colors.player;
+        ctx.beginPath();
+        ctx.arc(width / 2, height / 2, 10, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Draw direction indicator
+        const dirX = width / 2 + Math.sin(cameraRotation.yaw * Math.PI / 180) * 20;
+        const dirY = height / 2 - Math.cos(cameraRotation.yaw * Math.PI / 180) * 20;
+        ctx.beginPath();
+        ctx.moveTo(width / 2, height / 2);
+        ctx.lineTo(dirX, dirY);
+        ctx.stroke();
+        
+        // Draw HUD
+        ctx.fillStyle = colors.text;
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText(`Position: X: ${cameraPosition.x.toFixed(2)}, Y: ${cameraPosition.y.toFixed(2)}, Z: ${cameraPosition.z.toFixed(2)}`, 10, 20);
+        ctx.fillText(`Rotation: Yaw: ${cameraRotation.yaw.toFixed(2)}°, Pitch: ${cameraRotation.pitch.toFixed(2)}°`, 10, 40);
+        ctx.fillText('WASD: Move, Space/Shift: Up/Down, Mouse: Look', 10, 60);
+    }
+    
+    // Handle window resize
+    function handleResize() {
+        if (!canvasElement) return;
+        
         canvasElement.width = window.innerWidth;
         canvasElement.height = window.innerHeight;
         
-        // Initialize WebGL
-        if (!initWebGL()) {
-            console.error('Failed to initialize WebGL');
+        render();
+    }
+    
+    onMount(() => {
+        // Initialize canvas
+        ctx = canvasElement.getContext('2d');
+        if (!ctx) {
+            console.error('Failed to get 2D context');
             return;
         }
+        
+        // Set canvas size
+        handleResize();
         
         // Add event listeners
         window.addEventListener('keydown', handleKeyDown);
         window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('resize', handleResize);
         canvasElement.addEventListener('click', requestPointerLock);
         
-        // Handle window resize
-        const handleResize = () => {
-            canvasElement.width = window.innerWidth;
-            canvasElement.height = window.innerHeight;
-            
-            if (gl) {
-                gl.viewport(0, 0, canvasElement.width, canvasElement.height);
-            }
-        };
+        // Initial render
+        render();
         
-        window.addEventListener('resize', handleResize);
-        
-        // Animation loop
-        const animate = () => {
+        // Set up pointer lock change detection
+        document.addEventListener('pointerlockchange', () => {
+            voxelGameStore.update(state => ({
+                ...state,
+                isPointerLocked: document.pointerLockElement === canvasElement
+            }));
             render();
-            requestAnimationFrame(animate);
-        };
-        
-        animate();
+        });
         
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
             window.removeEventListener('mousemove', handleMouseMove);
             window.removeEventListener('resize', handleResize);
             canvasElement.removeEventListener('click', requestPointerLock);
+            document.removeEventListener('pointerlockchange', () => {});
         };
     });
 </script>
