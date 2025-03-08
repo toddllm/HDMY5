@@ -1,6 +1,9 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { generateFlatTerrain, addVoxel, VoxelType } from '../../stores/voxel/voxelGameStore';
+    import { generateFlatTerrain, addVoxel } from '../../stores/voxel/voxelGameStore';
+    
+    // Define VoxelType directly to avoid import issues
+    type VoxelType = "air" | "dirt" | "grass" | "stone" | "wood" | "leaves";
     
     // Colors extracted from analysis
     const colors = ["#FF69B4", "#FFA500", "#4682B4", "#FFA500", "#000000", "#C8A2C8", "#FF69B4", "#FFA500"];
