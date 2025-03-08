@@ -26,33 +26,77 @@ OWNER=$(echo "$REPO_URL" | sed -n 's/.*github.com[:/]\(.*\)\/'"$REPO_NAME"'.*/\1
 
 echo "Setting up GitHub Pages for repository: $OWNER/$REPO_NAME"
 
-# Enable GitHub Pages with the docs folder
-echo "Enabling GitHub Pages with the /docs folder on the main branch..."
-gh api \
+# First, create the GitHub Pages site
+echo "Creating GitHub Pages site with the /docs folder on the main branch..."
+CREATE_RESPONSE=$(gh api \
+  --method POST \
+  -H "Accept: application/vnd.github+json" \
+  /repos/$OWNER/$REPO_NAME/pages \
+  -f build_type="workflow" \
+  -f source='{"branch":"main","path":"/docs"}' 2>&1 || true)
+
+# Check if the create operation succeeded or if the site already exists
+if echo "$CREATE_RESPONSE" | grep -q "already exists"; then
+    echo "GitHub Pages site already exists. Updating settings..."
+elif echo "$CREATE_RESPONSE" | grep -q "Not Found"; then
+    echo "Error: Unable to create GitHub Pages site. Make sure you have admin permissions for this repository."
+    echo "Error details: $CREATE_RESPONSE"
+    echo "Trying to update the site instead..."
+else
+    echo "Successfully created GitHub Pages site."
+fi
+
+# Now update the GitHub Pages settings
+echo "Updating GitHub Pages settings..."
+UPDATE_RESPONSE=$(gh api \
   --method PUT \
   -H "Accept: application/vnd.github+json" \
   /repos/$OWNER/$REPO_NAME/pages \
-  -f source='{"branch":"main","path":"/docs"}'
+  -f source='{"branch":"main","path":"/docs"}' 2>&1 || true)
+
+if echo "$UPDATE_RESPONSE" | grep -q "Not Found"; then
+    echo "Warning: Unable to update GitHub Pages settings. You may need to configure settings manually."
+    echo "Error details: $UPDATE_RESPONSE"
+else
+    echo "Successfully updated GitHub Pages settings."
+fi
 
 # Check GitHub Pages status
 echo "Checking GitHub Pages status..."
 PAGES_STATUS=$(gh api \
   -H "Accept: application/vnd.github+json" \
-  /repos/$OWNER/$REPO_NAME/pages)
+  /repos/$OWNER/$REPO_NAME/pages 2>&1 || echo "Not available")
 
-echo "GitHub Pages status: $PAGES_STATUS"
+if echo "$PAGES_STATUS" | grep -q "Not Found" || echo "$PAGES_STATUS" | grep -q "Not available"; then
+    echo "GitHub Pages status could not be retrieved."
+else
+    echo "GitHub Pages status: $PAGES_STATUS"
+fi
 
-# Enable HTTPS (recommended)
+# Enable HTTPS if possible
 echo "Enabling HTTPS for GitHub Pages..."
-gh api \
+HTTPS_RESPONSE=$(gh api \
   --method PUT \
   -H "Accept: application/vnd.github+json" \
   /repos/$OWNER/$REPO_NAME/pages \
-  -f https_enforced=true
+  -f https_enforced=true 2>&1 || true)
 
-echo "GitHub Pages has been set up successfully!"
-echo "Your site will be available at: https://$OWNER.github.io/$REPO_NAME/"
+if echo "$HTTPS_RESPONSE" | grep -q "Not Found"; then
+    echo "Warning: Unable to enable HTTPS. You may need to do this manually once the site is created."
+else
+    echo "HTTPS has been enabled for your GitHub Pages site."
+fi
+
+echo ""
+echo "GitHub Pages setup process completed."
+echo "Your site should be available at: https://$OWNER.github.io/$REPO_NAME/"
 echo "It may take a few minutes for the site to be published."
+echo ""
+echo "If you encountered errors, you can try setting up GitHub Pages manually:"
+echo "1. Go to https://github.com/$OWNER/$REPO_NAME/settings/pages"
+echo "2. Under 'Build and deployment', select 'Deploy from a branch'"
+echo "3. Select the 'main' branch and the '/docs' folder"
+echo "4. Click 'Save'"
 
 # Instructions for setting up a custom domain (optional)
 echo ""

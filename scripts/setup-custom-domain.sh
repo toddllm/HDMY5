@@ -35,25 +35,53 @@ OWNER=$(echo "$REPO_URL" | sed -n 's/.*github.com[:/]\(.*\)\/'"$REPO_NAME"'.*/\1
 
 echo "Setting up custom domain '$DOMAIN' for repository: $OWNER/$REPO_NAME"
 
+# Check if GitHub Pages is enabled
+echo "Checking if GitHub Pages is enabled..."
+PAGES_STATUS=$(gh api \
+  -H "Accept: application/vnd.github+json" \
+  /repos/$OWNER/$REPO_NAME/pages 2>&1 || echo "Not available")
+
+if echo "$PAGES_STATUS" | grep -q "Not Found" || echo "$PAGES_STATUS" | grep -q "Not available"; then
+    echo "Error: GitHub Pages is not enabled for this repository."
+    echo "Please run ./scripts/setup-github-pages.sh first or enable GitHub Pages manually."
+    exit 1
+fi
+
 # Create CNAME file
 echo "Creating CNAME file in the docs directory..."
 echo "$DOMAIN" > docs/CNAME
 
 # Configure the custom domain in GitHub
 echo "Configuring the custom domain in GitHub..."
-gh api \
+DOMAIN_RESPONSE=$(gh api \
   --method PUT \
   -H "Accept: application/vnd.github+json" \
   /repos/$OWNER/$REPO_NAME/pages \
-  -f cname="$DOMAIN"
+  -f cname="$DOMAIN" 2>&1 || true)
+
+if echo "$DOMAIN_RESPONSE" | grep -q "Not Found"; then
+    echo "Warning: Unable to configure the custom domain via API."
+    echo "Error details: $DOMAIN_RESPONSE"
+    echo ""
+    echo "You may need to configure it manually:"
+    echo "1. Go to https://github.com/$OWNER/$REPO_NAME/settings/pages"
+    echo "2. Under 'Custom domain', enter '$DOMAIN'"
+    echo "3. Click 'Save'"
+else
+    echo "Successfully configured the custom domain in GitHub Pages settings."
+fi
 
 # Check GitHub Pages status
 echo "Checking GitHub Pages status..."
 PAGES_STATUS=$(gh api \
   -H "Accept: application/vnd.github+json" \
-  /repos/$OWNER/$REPO_NAME/pages)
+  /repos/$OWNER/$REPO_NAME/pages 2>&1 || echo "Not available")
 
-echo "GitHub Pages status: $PAGES_STATUS"
+if echo "$PAGES_STATUS" | grep -q "Not Found" || echo "$PAGES_STATUS" | grep -q "Not available"; then
+    echo "GitHub Pages status could not be retrieved."
+else
+    echo "GitHub Pages status: $PAGES_STATUS"
+fi
 
 # Commit and push the CNAME file
 echo "Committing and pushing the CNAME file..."
@@ -61,8 +89,9 @@ git add docs/CNAME
 git commit -m "Add CNAME for custom domain: $DOMAIN"
 git push
 
-echo "Custom domain has been set up successfully!"
-echo "Your site will be available at: https://$DOMAIN/"
+echo ""
+echo "Custom domain setup process completed."
+echo "Your site should be available at: https://$DOMAIN/ once DNS is configured correctly."
 echo "It may take some time for DNS changes to propagate and for GitHub to provision your SSL certificate."
 echo ""
 echo "DNS Configuration Instructions:"
