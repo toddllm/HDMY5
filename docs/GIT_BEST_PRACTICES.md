@@ -27,7 +27,38 @@ We've created a helper script that ensures consistent output formatting for Git 
 ./scripts/git-helpers/git-with-cat.sh diff --staged
 ```
 
-#### Why Use This?
+### setup-git-aliases.sh
+
+We've also created a script to set up Git aliases that use `cat` as the pager. This allows you to use Git commands with consistent output formatting without having to use the helper script each time.
+
+#### Usage
+
+```bash
+./scripts/git-helpers/setup-git-aliases.sh
+```
+
+This will set up the following aliases:
+
+- `git catlog` - Show commit logs with cat pager
+- `git catdiff` - Show diffs with cat pager
+- `git catshow` - Show various Git objects with cat pager
+- `git catstatus` - Show repository status with cat pager
+- `git catblame` - Show file blame information with cat pager
+
+#### Examples
+
+```bash
+# View the last 5 commits in a concise format
+git catlog -n 5 --oneline
+
+# View the details of a specific commit
+git catshow <commit-hash>
+
+# View the diff of staged changes
+git catdiff --staged
+```
+
+## Why Use These Tools?
 
 - **Consistent Output**: Ensures that Git output is displayed consistently across different environments
 - **No Pagination**: Avoids the need to navigate through paginated output with less/more
@@ -60,20 +91,14 @@ We've created a helper script that ensures consistent output formatting for Git 
    - Each commit should represent a logical unit of work
    - Avoid large commits that mix unrelated changes
 
-## Setting Up Git Aliases
+## Manual Setup of Git Aliases
 
-You can also set up Git aliases to automatically use `cat` as the pager:
+If you prefer to set up the aliases manually, you can use the following commands:
 
 ```bash
 git config --global alias.catlog 'log --color=always | cat'
 git config --global alias.catdiff 'diff --color=always | cat'
 git config --global alias.catshow 'show --color=always | cat'
-```
-
-Then you can use these aliases:
-
-```bash
-git catlog -n 5
-git catdiff HEAD~1
-git catshow HEAD
+git config --global alias.catstatus 'status --color=always | cat'
+git config --global alias.catblame 'blame --color=always | cat'
 ```
