@@ -10,8 +10,16 @@
     "prepare": "svelte-kit sync || echo ''",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+    "check:a11y": "./check-a11y.sh",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "test:e2e": "./run-e2e-tests.sh",
+    "test:e2e:simple": "npx playwright test tests/simple-test.spec.ts --project=chromium --reporter=list",
+    "test:e2e:visual": "./run-visual-tests.sh",
+    "test:e2e:voxel": "./run-voxel-tests.sh",
+    "test:all": "npm run test && npm run test:e2e:simple",
+    "report:show": "./show-report.sh",
+    "report:show:original": "npx playwright show-report"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
