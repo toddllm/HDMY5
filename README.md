@@ -154,6 +154,12 @@ This will start both the development server for the actual demos and an HTTP ser
   - Demo page: http://localhost:8080/voxel-engine/
   - Actual demo: http://localhost:5173/voxel-demo
 
+### Live Demo on GitHub Pages
+
+Visit our live demo site at: [https://toddllm.github.io/HDMY5/](https://toddllm.github.io/HDMY5/)
+
+The GitHub Pages site features the latest stable version of HDMY5 Game Builder and is automatically updated when changes are pushed to the main branch.
+
 ### Capturing Demo Screenshots and Videos
 
 To capture screenshots and videos of the voxel demo:
@@ -168,3 +174,26 @@ This will:
 2. Capture screenshots of the demo
 3. Record a video of the demo
 4. Save the screenshots and video to the `demos/voxel-engine/` directory
+
+## GitHub Pages
+
+The project is hosted on GitHub Pages, providing a live demonstration of the HDMY5 Game Builder.
+
+### Live Demo
+
+Visit our live demo site at: [https://toddllm.github.io/HDMY5/](https://toddllm.github.io/HDMY5/)
+
+### GitHub Pages Automation
+
+This project includes automation scripts to set up and configure GitHub Pages:
+
+1. **Setup GitHub Pages**: `./scripts/setup-github-pages.sh`
+
+   - Creates and configures a GitHub Pages site for the repository
+   - Requires proper GitHub authentication
+
+2. **Configure Custom Domain**: `./scripts/setup-custom-domain.sh [domain]`
+   - Sets up a custom domain for the GitHub Pages site
+   - Validates the domain and configures DNS settings
+
+For detailed information about the automation scripts, see [docs/AUTOMATION_SCRIPTS.md](docs/AUTOMATION_SCRIPTS.md).
