@@ -169,6 +169,11 @@ def main(analysis_file):
     
     # Generate route file to showcase the custom element
     route_file = "src/routes/custom-voxel/+page.svelte"
+    route_dir = os.path.dirname(route_file)
+    
+    # Create the route directory if it doesn't exist
+    os.makedirs(route_dir, exist_ok=True)
+    
     with open(route_file, 'w') as f:
         f.write("""<script lang="ts">
     import CustomVoxelElement from '$lib/components/voxel/CustomVoxelElement.svelte';
