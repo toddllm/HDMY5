@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Voxel Engine Demo - HDMY5 Game Builder</title>
+    <style>
+      :root {
+        --primary-color: #4a6baf;
+        --secondary-color: #2c3e50;
+        --accent-color: #e74c3c;
+        --text-color: #333;
+        --light-bg: #f5f7fa;
+        --dark-bg: #2c3e50;
+        --card-bg: #fff;
+        --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        --border-radius: 8px;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        line-height: 1.6;
+        color: var(--text-color);
+        background-color: var(--light-bg);
+      }
+
+      header {
+        background-color: var(--primary-color);
+        color: white;
+        padding: 2rem 0;
+        text-align: center;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 2rem;
+      }
+
+      h1 {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+      }
+
+      h2 {
+        font-size: 2rem;
+        margin: 2rem 0 1rem;
+        color: var(--primary-color);
+      }
+
+      h3 {
+        font-size: 1.5rem;
+        margin: 1.5rem 0 1rem;
+        color: var(--secondary-color);
+      }
+
+      p {
+        margin-bottom: 1rem;
+      }
+
+      .subtitle {
+        font-size: 1.2rem;
+        opacity: 0.8;
+      }
+
+      .btn {
+        display: inline-block;
+        background-color: var(--accent-color);
+        color: white;
+        padding: 0.8rem 1.5rem;
+        border-radius: var(--border-radius);
+        text-decoration: none;
+        font-weight: bold;
+        transition: background-color 0.3s;
+        margin: 1rem 0;
+      }
+
+      .btn:hover {
+        background-color: #c0392b;
+      }
+
+      .features {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+        margin: 2rem 0;
+      }
+
+      .feature-card {
+        background-color: var(--card-bg);
+        border-radius: var(--border-radius);
+        padding: 1.5rem;
+        box-shadow: var(--card-shadow);
+      }
+
+      .feature-icon {
+        font-size: 2.5rem;
+        color: var(--primary-color);
+        margin-bottom: 1rem;
+      }
+
+      .screenshots {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin: 2rem 0;
+      }
+
+      .screenshot {
+        border-radius: var(--border-radius);
+        overflow: hidden;
+        box-shadow: var(--card-shadow);
+        transition: transform 0.3s;
+      }
+
+      .screenshot:hover {
+        transform: scale(1.03);
+      }
+
+      .screenshot img {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .screenshot-caption {
+        background-color: var(--card-bg);
+        padding: 1rem;
+      }
+
+      .video-container {
+        margin: 2rem 0;
+        border-radius: var(--border-radius);
+        overflow: hidden;
+        box-shadow: var(--card-shadow);
+      }
+
+      video {
+        width: 100%;
+        display: block;
+      }
+
+      .controls {
+        background-color: var(--dark-bg);
+        color: white;
+        padding: 2rem;
+        border-radius: var(--border-radius);
+        margin: 2rem 0;
+      }
+
+      .controls h3 {
+        color: white;
+      }
+
+      .controls ul {
+        list-style-type: none;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+      }
+
+      .controls li {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.5rem;
+      }
+
+      .key {
+        background-color: #34495e;
+        color: white;
+        padding: 0.3rem 0.6rem;
+        border-radius: 4px;
+        margin-right: 0.5rem;
+        font-family: monospace;
+        font-weight: bold;
+      }
+
+      footer {
+        background-color: var(--secondary-color);
+        color: white;
+        padding: 2rem 0;
+        text-align: center;
+        margin-top: 3rem;
+      }
+
+      .footer-links {
+        display: flex;
+        justify-content: center;
+        gap: 1.5rem;
+        margin-top: 1rem;
+      }
+
+      .footer-links a {
+        color: white;
+        text-decoration: none;
+      }
+
+      .footer-links a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 768px) {
+        h1 {
+          font-size: 2rem;
+        }
+
+        h2 {
+          font-size: 1.5rem;
+        }
+
+        .container {
+          padding: 0 1rem;
+        }
+
+        .controls ul {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="container">
+        <h1>Voxel Engine Demo</h1>
+        <p class="subtitle">
+          A Minecraft-inspired 3D voxel engine built with the HDMY5 Game Builder
+        </p>
+        <a href="/voxel-demo" class="btn">Try the Demo</a>
+      </div>
+    </header>
+
+    <main class="container">
+      <section>
+        <h2>About the Demo</h2>
+        <p>
+          This demo showcases a Minecraft-inspired voxel engine built with the
+          HDMY5 Game Builder. The engine features procedurally generated
+          terrain, block placement and destruction, player movement with
+          physics, and a variety of block types.
+        </p>
+        <p>
+          The voxel engine is built using Three.js for rendering and custom
+          algorithms for terrain generation, collision detection, and chunk
+          management.
+        </p>
+      </section>
+
+      <section>
+        <h2>Key Features</h2>
+        <div class="features">
+          <div class="feature-card">
+            <div class="feature-icon">🌍</div>
+            <h3>Procedural Terrain</h3>
+            <p>
+              Infinite terrain generation with multiple biomes, including
+              forests, mountains, plains, and deserts.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">🧱</div>
+            <h3>Block Interaction</h3>
+            <p>
+              Place and destroy blocks with realistic physics and collision
+              detection. Choose from a variety of block types.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">🏃</div>
+            <h3>Player Movement</h3>
+            <p>
+              Smooth first-person movement with jumping, gravity, and collision
+              detection.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Screenshots</h2>
+        <div class="screenshots">
+          <div class="screenshot">
+            <img
+              src="screenshots/voxel-demo-start-screen.png"
+              alt="Start Screen"
+            />
+            <div class="screenshot-caption">
+              <h3>Start Screen</h3>
+              <p>The demo start screen with controls information.</p>
+            </div>
+          </div>
+
+          <div class="screenshot">
+            <img
+              src="screenshots/voxel-demo-initial-view.png"
+              alt="Initial View"
+            />
+            <div class="screenshot-caption">
+              <h3>Initial View</h3>
+              <p>The initial view of the procedurally generated terrain.</p>
+            </div>
+          </div>
+
+          <div class="screenshot">
+            <img
+              src="screenshots/voxel-demo-moving-forward.png"
+              alt="Moving Forward"
+            />
+            <div class="screenshot-caption">
+              <h3>Moving Forward</h3>
+              <p>Moving through the voxel world.</p>
+            </div>
+          </div>
+
+          <div class="screenshot">
+            <img src="screenshots/voxel-demo-jumping.png" alt="Jumping" />
+            <div class="screenshot-caption">
+              <h3>Jumping</h3>
+              <p>Player jumping with physics.</p>
+            </div>
+          </div>
+
+          <div class="screenshot">
+            <img
+              src="screenshots/voxel-demo-select-grass.png"
+              alt="Selecting Grass Blocks"
+            />
+            <div class="screenshot-caption">
+              <h3>Block Selection</h3>
+              <p>Selecting different block types from the hotbar.</p>
+            </div>
+          </div>
+
+          <div class="screenshot">
+            <img src="screenshots/voxel-demo-place-mode.png" alt="Place Mode" />
+            <div class="screenshot-caption">
+              <h3>Place Mode</h3>
+              <p>Toggling between break and place modes.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Demo Video</h2>
+        <div class="video-container">
+          <video controls>
+            <source src="videos/voxel-demo.webm" type="video/webm" />
+            Your browser does not support the video tag.
+          </video>
+        </div>
+      </section>
+
+      <section class="controls">
+        <h2>Controls</h2>
+        <ul>
+          <li><span class="key">W</span> Move forward</li>
+          <li><span class="key">A</span> Move left</li>
+          <li><span class="key">S</span> Move backward</li>
+          <li><span class="key">D</span> Move right</li>
+          <li><span class="key">Space</span> Jump</li>
+          <li><span class="key">Mouse</span> Look around</li>
+          <li>
+            <span class="key">Left Click</span> Break/place block (depends on
+            mode)
+          </li>
+          <li>
+            <span class="key">Right Click</span> Place/break block (opposite of
+            mode)
+          </li>
+          <li><span class="key">F</span> Toggle between break/place mode</li>
+          <li><span class="key">1-9</span> Select block type</li>
+          <li>
+            <span class="key">Mouse Wheel</span> Cycle through block types
+          </li>
+          <li><span class="key">ESC</span> Release mouse cursor</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Technical Details</h2>
+        <p>The voxel engine is built using the following technologies:</p>
+        <ul>
+          <li>Three.js for 3D rendering</li>
+          <li>Custom chunk management system for efficient rendering</li>
+          <li>Procedural terrain generation using noise algorithms</li>
+          <li>Custom collision detection and physics</li>
+          <li>Svelte for UI components</li>
+        </ul>
+        <p>
+          The engine is designed to be extensible, allowing for easy addition of
+          new block types, biomes, and game mechanics.
+        </p>
+      </section>
+    </main>
+
+    <footer>
+      <div class="container">
+        <p>&copy; 2023 HDMY5 Game Builder</p>
+        <div class="footer-links">
+          <a href="/">Home</a>
+          <a href="/voxel-demo">Try Demo</a>
+          <a href="https://github.com/toddllm/HDMY5">GitHub</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

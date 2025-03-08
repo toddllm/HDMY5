@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HDMY5 Game Builder Demos</title>
+    <style>
+      :root {
+        --primary-color: #4a6baf;
+        --secondary-color: #2c3e50;
+        --accent-color: #e74c3c;
+        --text-color: #333;
+        --light-bg: #f5f7fa;
+        --card-bg: #fff;
+        --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        --border-radius: 8px;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        line-height: 1.6;
+        color: var(--text-color);
+        background-color: var(--light-bg);
+      }
+
+      header {
+        background-color: var(--primary-color);
+        color: white;
+        padding: 2rem 0;
+        text-align: center;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 2rem;
+      }
+
+      h1 {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+      }
+
+      h2 {
+        font-size: 2rem;
+        margin: 2rem 0 1rem;
+        color: var(--primary-color);
+      }
+
+      p {
+        margin-bottom: 1rem;
+      }
+
+      .subtitle {
+        font-size: 1.2rem;
+        opacity: 0.8;
+      }
+
+      .demos {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+        margin: 2rem 0;
+      }
+
+      .demo-card {
+        background-color: var(--card-bg);
+        border-radius: var(--border-radius);
+        overflow: hidden;
+        box-shadow: var(--card-shadow);
+        transition: transform 0.3s;
+      }
+
+      .demo-card:hover {
+        transform: translateY(-5px);
+      }
+
+      .demo-image {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+      }
+
+      .demo-content {
+        padding: 1.5rem;
+      }
+
+      .demo-title {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+        color: var(--secondary-color);
+      }
+
+      .demo-description {
+        margin-bottom: 1.5rem;
+        color: #666;
+      }
+
+      .demo-link {
+        display: inline-block;
+        background-color: var(--accent-color);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: var(--border-radius);
+        text-decoration: none;
+        font-weight: bold;
+        transition: background-color 0.3s;
+      }
+
+      .demo-link:hover {
+        background-color: #c0392b;
+      }
+
+      footer {
+        background-color: var(--secondary-color);
+        color: white;
+        padding: 2rem 0;
+        text-align: center;
+        margin-top: 3rem;
+      }
+
+      .footer-links {
+        display: flex;
+        justify-content: center;
+        gap: 1.5rem;
+        margin-top: 1rem;
+      }
+
+      .footer-links a {
+        color: white;
+        text-decoration: none;
+      }
+
+      .footer-links a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 768px) {
+        h1 {
+          font-size: 2rem;
+        }
+
+        h2 {
+          font-size: 1.5rem;
+        }
+
+        .container {
+          padding: 0 1rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="container">
+        <h1>HDMY5 Game Builder Demos</h1>
+        <p class="subtitle">
+          Explore interactive demos showcasing the capabilities of the HDMY5
+          Game Builder
+        </p>
+      </div>
+    </header>
+
+    <main class="container">
+      <section>
+        <h2>Available Demos</h2>
+        <div class="demos">
+          <div class="demo-card">
+            <img
+              src="voxel-engine/screenshots/voxel-demo-initial-view.png"
+              alt="Voxel Engine Demo"
+              class="demo-image"
+            />
+            <div class="demo-content">
+              <h3 class="demo-title">Voxel Engine Demo</h3>
+              <p class="demo-description">
+                A Minecraft-inspired 3D voxel engine with procedural terrain
+                generation, block placement and destruction, and physics.
+              </p>
+              <a href="voxel-engine/" class="demo-link">View Demo</a>
+            </div>
+          </div>
+
+          <!-- More demo cards can be added here as they are developed -->
+
+          <div class="demo-card">
+            <img
+              src="https://via.placeholder.com/400x200?text=Coming+Soon"
+              alt="Physics Demo"
+              class="demo-image"
+            />
+            <div class="demo-content">
+              <h3 class="demo-title">Physics Demo</h3>
+              <p class="demo-description">
+                Coming soon! A demo showcasing the physics capabilities of the
+                HDMY5 Game Builder.
+              </p>
+              <a href="#" class="demo-link" style="background-color: #999"
+                >Coming Soon</a
+              >
+            </div>
+          </div>
+
+          <div class="demo-card">
+            <img
+              src="https://via.placeholder.com/400x200?text=Coming+Soon"
+              alt="Particle Effects Demo"
+              class="demo-image"
+            />
+            <div class="demo-content">
+              <h3 class="demo-title">Particle Effects Demo</h3>
+              <p class="demo-description">
+                Coming soon! A demo showcasing the particle effects system of
+                the HDMY5 Game Builder.
+              </p>
+              <a href="#" class="demo-link" style="background-color: #999"
+                >Coming Soon</a
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>About HDMY5 Game Builder</h2>
+        <p>
+          HDMY5 Game Builder is a powerful and flexible game development
+          framework that allows developers to create 2D and 3D games with ease.
+          It provides a wide range of features and tools to streamline the game
+          development process.
+        </p>
+        <p>
+          These demos showcase various capabilities of the HDMY5 Game Builder,
+          from 3D voxel rendering to physics simulations and particle effects.
+        </p>
+      </section>
+    </main>
+
+    <footer>
+      <div class="container">
+        <p>&copy; 2023 HDMY5 Game Builder</p>
+        <div class="footer-links">
+          <a href="/">Home</a>
+          <a href="https://github.com/toddllm/HDMY5">GitHub</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

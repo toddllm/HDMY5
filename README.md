@@ -133,3 +133,38 @@ The tests also generate screenshots that are saved to the project root directory
 - `add-object-button.png`: Shows the application with the "Add Object" button
 
 For more detailed information about the dev container and testing, see the [Dev Container Guide](DEV_CONTAINER_GUIDE.md).
+
+## Demos
+
+The project includes several interactive demos that showcase the capabilities of the HDMY5 Game Builder:
+
+### Running the Demos
+
+To run all demos:
+
+```bash
+./scripts/demos/serve-all-demos.sh
+```
+
+This will start both the development server for the actual demos and an HTTP server for the demo pages. You can then access the demo pages at http://localhost:8080/.
+
+### Available Demos
+
+- **Voxel Engine Demo**: A Minecraft-inspired 3D voxel engine with procedural terrain generation, block placement and destruction, and physics.
+  - Demo page: http://localhost:8080/voxel-engine/
+  - Actual demo: http://localhost:5173/voxel-demo
+
+### Capturing Demo Screenshots and Videos
+
+To capture screenshots and videos of the voxel demo:
+
+```bash
+./scripts/demos/capture-voxel-demo.sh
+```
+
+This will:
+
+1. Start the development server
+2. Capture screenshots of the demo
+3. Record a video of the demo
+4. Save the screenshots and video to the `demos/voxel-engine/` directory
