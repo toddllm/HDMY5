@@ -5,13 +5,14 @@
     // Define VoxelType directly to avoid import issues
     type VoxelType = "air" | "dirt" | "grass" | "stone" | "wood" | "leaves";
     
-    // Colors from image analysis
+    // Colors from image analysis with more detail
     const colors = {
-        bodyPink: "#FF69B4",
-        orange: "#FFA500", 
-        detailBlue: "#4682B4",
-        tridentBase: "#000000",
-        tridentTips: "#C8A2C8"
+        bodyPink: "#FF69B4",  // Main character color
+        orange: "#FFA500",    // Eyes and accent color
+        detailBlue: "#4682B4", // Smile and shoulder details
+        tridentBase: "#000000", // Trident handle
+        tridentTips: "#C8A2C8", // Trident tips - lilac color
+        groundPink: "#FF69B4" // Ground texture color
     };
     
     // Error state
@@ -51,12 +52,12 @@
         try {
             progress = "Clearing existing voxels...";
             clearVoxels();
-            progress = "Creating pink terrain...";
+            progress = "Creating pink textured terrain...";
             await createTerrain();
-            progress = "Adding character...";
+            progress = "Adding childlike character...";
             await createCharacter();
-            progress = "Adding details...";
-            await createTrident();
+            progress = "Adding trident and accessories...";
+            await createAccessories();
             progress = "Scene creation complete!";
         } catch (e) {
             console.error("Error creating scene:", e);
@@ -69,17 +70,19 @@
             // Generate flat terrain with a depth of 20 and height of 0
             await generateFlatTerrain(20, 0);
             
-            // Add pink texture to the ground as described in analysis
+            // Add pink texture to the ground as described in analysis with more variation
             for (let x = -10; x <= 10; x++) {
                 for (let z = -10; z <= 10; z++) {
-                    // Add some variation to the terrain
-                    const shouldColor = Math.random() > 0.2;
+                    // Create texture variation using noise-like pattern
+                    const noiseVal = Math.sin(x * 0.5) * Math.cos(z * 0.5) + Math.random() * 0.3;
+                    const shouldColor = noiseVal > 0;
+                    
                     if (shouldColor) {
-                        const voxelType = mapColorToVoxelType(colors.bodyPink);
+                        const voxelType = mapColorToVoxelType(colors.groundPink);
                         addVoxel(voxelType, x, 0, z);
                     }
                     
-                    // Add orange pathway as described in analysis
+                    // Add orange pathway/separation line as described in analysis
                     if (x === 0 || z === 0) {
                         const pathType = mapColorToVoxelType(colors.orange);
                         addVoxel(pathType, x, 0, z);
@@ -102,61 +105,110 @@
             const centerZ = 0;
             const baseHeight = 1;
             
-            // Head (square pink)
-            for (let y = 4; y <= 5; y++) {
-                for (let x = -1; x <= 1; x++) {
-                    for (let z = -1; z <= 1; z++) {
+            // Create a more bulky, blocky childlike character
+            
+            // Head - larger and more square to match child-like drawing 
+            for (let y = 4; y <= 6; y++) {
+                for (let x = -2; x <= 2; x++) {
+                    for (let z = -2; z <= 2; z++) {
+                        // Skip corners for slight rounding
+                        if ((Math.abs(x) === 2 && Math.abs(z) === 2)) continue;
+                        
                         const voxelType = mapColorToVoxelType(colors.bodyPink);
                         addVoxel(voxelType, centerX + x, baseHeight + y, centerZ + z);
                     }
                 }
             }
             
-            // Eyes (orange squares)
-            addVoxel(mapColorToVoxelType(colors.orange), centerX - 1, baseHeight + 5, centerZ - 1);
-            addVoxel(mapColorToVoxelType(colors.orange), centerX + 1, baseHeight + 5, centerZ - 1);
+            // Eyes - larger orange squares
+            // Left eye
+            for (let x = -2; x <= -1; x++) {
+                for (let z = -3; z <= -2; z++) {
+                    addVoxel(mapColorToVoxelType(colors.orange), centerX + x, baseHeight + 6, centerZ + z);
+                }
+            }
+            // Right eye
+            for (let x = 1; x <= 2; x++) {
+                for (let z = -3; z <= -2; z++) {
+                    addVoxel(mapColorToVoxelType(colors.orange), centerX + x, baseHeight + 6, centerZ + z);
+                }
+            }
             
-            // Smile (blue)
-            addVoxel(mapColorToVoxelType(colors.detailBlue), centerX - 1, baseHeight + 4, centerZ - 1);
-            addVoxel(mapColorToVoxelType(colors.detailBlue), centerX, baseHeight + 4, centerZ - 1);
-            addVoxel(mapColorToVoxelType(colors.detailBlue), centerX + 1, baseHeight + 4, centerZ - 1);
+            // Smile - wider blue smile
+            for (let x = -2; x <= 2; x++) {
+                addVoxel(mapColorToVoxelType(colors.detailBlue), centerX + x, baseHeight + 4, centerZ - 2);
+            }
             
-            // Torso (rectangular pink)
+            // Torso - larger, blocky rectangular shape
             for (let y = 1; y <= 3; y++) {
-                for (let x = -1; x <= 1; x++) {
-                    for (let z = -1; z <= 0; z++) {
+                for (let x = -3; x <= 3; x++) {
+                    for (let z = -2; z <= 2; z++) {
+                        // Skip corners for slight shape refinement
+                        if ((Math.abs(x) === 3 && Math.abs(z) === 2)) continue;
+                        
                         const voxelType = mapColorToVoxelType(colors.bodyPink);
                         addVoxel(voxelType, centerX + x, baseHeight + y, centerZ + z);
                     }
                 }
             }
             
-            // Arms (pink with orange joints)
+            // Arms - thicker and more rectangular to match childlike drawing
             // Left arm
-            for (let x = -2; x >= -4; x--) {
-                addVoxel(mapColorToVoxelType(colors.bodyPink), centerX + x, baseHeight + 3, centerZ);
+            for (let x = -6; x <= -3; x++) {
+                for (let y = 2; y <= 3; y++) {
+                    addVoxel(mapColorToVoxelType(colors.bodyPink), centerX + x, baseHeight + y, centerZ);
+                }
             }
             // Right arm
-            for (let x = 2; x <= 4; x++) {
-                addVoxel(mapColorToVoxelType(colors.bodyPink), centerX + x, baseHeight + 3, centerZ);
+            for (let x = 3; x <= 6; x++) {
+                for (let y = 2; y <= 3; y++) {
+                    addVoxel(mapColorToVoxelType(colors.bodyPink), centerX + x, baseHeight + y, centerZ);
+                }
             }
-            // Joints (orange)
-            addVoxel(mapColorToVoxelType(colors.orange), centerX - 2, baseHeight + 3, centerZ);
-            addVoxel(mapColorToVoxelType(colors.orange), centerX + 2, baseHeight + 3, centerZ);
             
-            // Legs (pink)
+            // Joints with orange color (shoulders)
+            // Left shoulder joint
+            for (let y = 2; y <= 3; y++) {
+                for (let z = -1; z <= 1; z++) {
+                    addVoxel(mapColorToVoxelType(colors.orange), centerX - 3, baseHeight + y, centerZ + z);
+                }
+            }
+            // Right shoulder joint
+            for (let y = 2; y <= 3; y++) {
+                for (let z = -1; z <= 1; z++) {
+                    addVoxel(mapColorToVoxelType(colors.orange), centerX + 3, baseHeight + y, centerZ + z);
+                }
+            }
+            
+            // Thicker legs
             // Left leg
-            for (let y = 0; y >= -3; y--) {
-                addVoxel(mapColorToVoxelType(colors.bodyPink), centerX - 1, baseHeight + y, centerZ);
+            for (let y = -3; y <= 0; y++) {
+                for (let x = -2; x <= -1; x++) {
+                    for (let z = -1; z <= 1; z++) {
+                        addVoxel(mapColorToVoxelType(colors.bodyPink), centerX + x, baseHeight + y, centerZ + z);
+                    }
+                }
             }
             // Right leg
-            for (let y = 0; y >= -3; y--) {
-                addVoxel(mapColorToVoxelType(colors.bodyPink), centerX + 1, baseHeight + y, centerZ);
+            for (let y = -3; y <= 0; y++) {
+                for (let x = 1; x <= 2; x++) {
+                    for (let z = -1; z <= 1; z++) {
+                        addVoxel(mapColorToVoxelType(colors.bodyPink), centerX + x, baseHeight + y, centerZ + z);
+                    }
+                }
             }
             
-            // Blue shoulder accent
-            addVoxel(mapColorToVoxelType(colors.detailBlue), centerX - 1, baseHeight + 3, centerZ + 1);
-            addVoxel(mapColorToVoxelType(colors.detailBlue), centerX + 1, baseHeight + 3, centerZ + 1);
+            // Blue shoulder accents - made larger and more prominent
+            for (let x = -3; x <= -1; x++) {
+                for (let z = 2; z <= 3; z++) {
+                    addVoxel(mapColorToVoxelType(colors.detailBlue), centerX + x, baseHeight + 3, centerZ + z);
+                }
+            }
+            for (let x = 1; x <= 3; x++) {
+                for (let z = 2; z <= 3; z++) {
+                    addVoxel(mapColorToVoxelType(colors.detailBlue), centerX + x, baseHeight + 3, centerZ + z);
+                }
+            }
             
             return true;
         } catch (characterError) {
@@ -166,35 +218,53 @@
         }
     }
     
-    async function createTrident() {
+    async function createAccessories() {
         try {
-            // Position the trident to the left of the character
-            const centerX = -5;
-            const centerZ = 0;
+            // Position the trident in the character's hand (left arm)
+            const tridentX = -6;
+            const tridentZ = 0;
             const baseHeight = 1;
             
-            // Trident handle (black)
-            for (let y = 1; y <= 6; y++) {
-                addVoxel(mapColorToVoxelType(colors.tridentBase), centerX, baseHeight + y, centerZ);
+            // Trident handle (black) - Make thicker and more prominent
+            for (let y = 0; y <= 7; y++) {
+                addVoxel(mapColorToVoxelType(colors.tridentBase), tridentX, baseHeight + y, tridentZ);
+                // Make the handle thicker
+                if (y >= 3 && y <= 6) {
+                    addVoxel(mapColorToVoxelType(colors.tridentBase), tridentX - 1, baseHeight + y, tridentZ);
+                }
             }
             
-            // Trident tips (lilac)
-            addVoxel(mapColorToVoxelType(colors.tridentTips), centerX - 1, baseHeight + 6, centerZ);
-            addVoxel(mapColorToVoxelType(colors.tridentTips), centerX, baseHeight + 7, centerZ);
-            addVoxel(mapColorToVoxelType(colors.tridentTips), centerX + 1, baseHeight + 6, centerZ);
+            // Trident tips (lilac) - Make larger and more distinct
+            // Left tip
+            for (let y = 6; y <= 7; y++) {
+                addVoxel(mapColorToVoxelType(colors.tridentTips), tridentX - 2, baseHeight + y, tridentZ);
+            }
+            // Middle tip (taller)
+            for (let y = 6; y <= 8; y++) {
+                addVoxel(mapColorToVoxelType(colors.tridentTips), tridentX, baseHeight + y, tridentZ);
+            }
+            // Right tip
+            for (let y = 6; y <= 7; y++) {
+                addVoxel(mapColorToVoxelType(colors.tridentTips), tridentX + 1, baseHeight + y, tridentZ);
+            }
             
-            // Ring-like object (orange outline) - positioned to the right of the character
-            const ringX = 5;
+            // Ring-like object (orange outline) - in character's right hand
+            const ringX = 6;
             const ringZ = 0;
-            addVoxel(mapColorToVoxelType(colors.orange), ringX - 1, baseHeight + 4, ringZ);
-            addVoxel(mapColorToVoxelType(colors.orange), ringX, baseHeight + 5, ringZ);
-            addVoxel(mapColorToVoxelType(colors.orange), ringX + 1, baseHeight + 4, ringZ);
-            addVoxel(mapColorToVoxelType(colors.orange), ringX, baseHeight + 3, ringZ);
+            
+            // Create a more defined ring shape
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const rx = Math.round(Math.cos(angle) * 2);
+                const ry = Math.round(Math.sin(angle) * 2);
+                
+                addVoxel(mapColorToVoxelType(colors.orange), ringX + rx, baseHeight + 3 + ry, ringZ);
+            }
             
             return true;
         } catch (detailsError) {
-            console.error("Error creating details:", detailsError);
-            error = `Error creating details: ${detailsError}`;
+            console.error("Error creating accessories:", detailsError);
+            error = `Error creating accessories: ${detailsError}`;
             return false;
         }
     }
