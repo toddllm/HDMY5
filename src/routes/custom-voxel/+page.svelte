@@ -92,17 +92,24 @@
         <button class="debug-button" on:click={() => { useSimpleTest = false; toggleComponent(); }}>
             FORCE IMAGE-BASED
         </button>
+        <button class="debug-button" on:click={() => { window.location.reload(); }}>
+            RELOAD PAGE
+        </button>
     </div>
     
     <div class="game-container">
         <VoxelGameCanvas />
+        
+        <!-- Always render SimpleVoxelTest but hide it when not active -->
+        <div style="display: {useSimpleTest ? 'block' : 'none'}">
+            <SimpleVoxelTest />
+        </div>
+        
+        <!-- Always render CustomVoxelElement but hide it when not active -->
+        <div style="display: {!useSimpleTest ? 'block' : 'none'}">
+            <CustomVoxelElement />
+        </div>
     </div>
-    
-    {#if useSimpleTest}
-        <SimpleVoxelTest />
-    {:else}
-        <CustomVoxelElement />
-    {/if}
 </div>
 
 <style>
