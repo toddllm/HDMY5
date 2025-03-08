@@ -46,6 +46,7 @@
         flex-wrap: wrap;
         justify-content: center;
         gap: 1rem;
+        margin-bottom: 2rem;
       }
 
       .button {
@@ -71,6 +72,22 @@
 
       .button:active {
         transform: translateY(-1px);
+      }
+
+      .github-link {
+        margin-top: 1rem;
+        font-size: 0.9rem;
+        opacity: 0.8;
+      }
+
+      .github-link a {
+        color: white;
+        text-decoration: underline;
+      }
+
+      .github-link a:hover {
+        opacity: 1;
+        text-decoration: none;
       }
 
       .cube {
@@ -186,6 +203,12 @@
         <a href="/custom-voxel" class="button">Launch Voxel Editor</a>
         <a href="/voxel-demo" class="button">Try Demo</a>
         <a href="/builder" class="button">Game Builder</a>
+      </div>
+
+      <div class="github-link">
+        <a href="https://github.com/toddllm/HDMY5" target="_blank"
+          >View on GitHub</a
+        >
       </div>
     </div>
 

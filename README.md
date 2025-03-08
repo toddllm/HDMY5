@@ -2,6 +2,16 @@
 
 An interactive voxel game demo and editor built with SvelteKit and Three.js.
 
+## Live Website
+
+**Visit the live application at [https://colorworld.live](https://colorworld.live)**
+
+The application features:
+
+- Interactive voxel demo
+- Custom voxel editor
+- Game builder
+
 ## Features
 
 - **Interactive Voxel Demo**: Experience a 3D voxel environment
@@ -80,6 +90,10 @@ If you encounter issues with the application:
 1. Check the server logs: `sudo journalctl -u colorworld-voxel`
 2. Verify Nginx is running: `sudo systemctl status nginx`
 3. Check for errors in the Nginx logs: `sudo tail -f /var/log/nginx/error.log`
+
+## Project Background
+
+This project was initially hosted on GitHub Pages at [https://toddllm.github.io/HDMY5/](https://toddllm.github.io/HDMY5/) but has now moved to its own domain at [https://colorworld.live](https://colorworld.live) for a better user experience and more features.
 
 ## License
 
@@ -241,11 +255,11 @@ This will start both the development server for the actual demos and an HTTP ser
   - Demo page: http://localhost:8080/voxel-engine/
   - Actual demo: http://localhost:5173/voxel-demo
 
-### Live Demo on GitHub Pages
+### Live Demo
 
-Visit our live demo site at: [https://toddllm.github.io/HDMY5/](https://toddllm.github.io/HDMY5/)
+Visit our live site at: [https://colorworld.live](https://colorworld.live)
 
-The GitHub Pages site features the latest stable version of HDMY5 Game Builder and is automatically updated when changes are pushed to the main branch.
+The live site features the latest stable version of the application.
 
 ### Capturing Demo Screenshots and Videos
 
@@ -261,26 +275,3 @@ This will:
 2. Capture screenshots of the demo
 3. Record a video of the demo
 4. Save the screenshots and video to the `demos/voxel-engine/` directory
-
-## GitHub Pages
-
-The project is hosted on GitHub Pages, providing a live demonstration of the HDMY5 Game Builder.
-
-### Live Demo
-
-Visit our live demo site at: [https://toddllm.github.io/HDMY5/](https://toddllm.github.io/HDMY5/)
-
-### GitHub Pages Automation
-
-This project includes automation scripts to set up and configure GitHub Pages:
-
-1. **Setup GitHub Pages**: `./scripts/setup-github-pages.sh`
-
-   - Creates and configures a GitHub Pages site for the repository
-   - Requires proper GitHub authentication
-
-2. **Configure Custom Domain**: `./scripts/setup-custom-domain.sh [domain]`
-   - Sets up a custom domain for the GitHub Pages site
-   - Validates the domain and configures DNS settings
-
-For detailed information about the automation scripts, see [docs/AUTOMATION_SCRIPTS.md](docs/AUTOMATION_SCRIPTS.md).
