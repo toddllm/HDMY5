@@ -48,3 +48,12 @@ yarn-error.log*
 /test-artifacts/
 *.png
 *.log
+
+# API Keys
+source.me
+
+# Python virtual environment
+.venv/
+
+# Python virtual environment
+.venv/
