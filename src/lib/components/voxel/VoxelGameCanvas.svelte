@@ -22,6 +22,9 @@
         text: '#FFFFFF'
     };
     
+    // Check if we're in the browser
+    const isBrowser = typeof window !== 'undefined';
+    
     // Handle keyboard input
     function handleKeyDown(event: KeyboardEvent) {
         const speed = 0.5;
@@ -75,7 +78,7 @@
     
     // Handle mouse movement
     function handleMouseMove(event: MouseEvent) {
-        if (document.pointerLockElement === canvasElement) {
+        if (isBrowser && document.pointerLockElement === canvasElement) {
             cameraRotation.yaw = (cameraRotation.yaw + event.movementX * 0.5) % 360;
             cameraRotation.pitch = Math.max(-89, Math.min(89, cameraRotation.pitch - event.movementY * 0.5));
             
@@ -92,7 +95,9 @@
     
     // Request pointer lock
     function requestPointerLock() {
-        canvasElement.requestPointerLock();
+        if (isBrowser) {
+            canvasElement.requestPointerLock();
+        }
     }
     
     // Render the scene
@@ -166,10 +171,12 @@
     function handleResize() {
         if (!canvasElement) return;
         
-        canvasElement.width = window.innerWidth;
-        canvasElement.height = window.innerHeight;
-        
-        render();
+        if (isBrowser) {
+            canvasElement.width = window.innerWidth;
+            canvasElement.height = window.innerHeight;
+            
+            render();
+        }
     }
     
     onMount(() => {
@@ -184,36 +191,43 @@
         handleResize();
         
         // Add event listeners
-        window.addEventListener('keydown', handleKeyDown);
-        window.addEventListener('mousemove', handleMouseMove);
-        window.addEventListener('resize', handleResize);
-        canvasElement.addEventListener('click', requestPointerLock);
+        if (isBrowser) {
+            window.addEventListener('keydown', handleKeyDown);
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('resize', handleResize);
+            canvasElement.addEventListener('click', requestPointerLock);
+            
+            // Set up pointer lock change detection
+            document.addEventListener('pointerlockchange', () => {
+                voxelGameStore.update(state => ({
+                    ...state,
+                    isPointerLocked: document.pointerLockElement === canvasElement
+                }));
+                render();
+            });
+        }
         
         // Initial render
         render();
         
-        // Set up pointer lock change detection
-        document.addEventListener('pointerlockchange', () => {
-            voxelGameStore.update(state => ({
-                ...state,
-                isPointerLocked: document.pointerLockElement === canvasElement
-            }));
-            render();
-        });
-        
         return () => {
-            window.removeEventListener('keydown', handleKeyDown);
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('resize', handleResize);
-            canvasElement.removeEventListener('click', requestPointerLock);
-            document.removeEventListener('pointerlockchange', () => {});
+            if (isBrowser) {
+                window.removeEventListener('keydown', handleKeyDown);
+                window.removeEventListener('mousemove', handleMouseMove);
+                window.removeEventListener('resize', handleResize);
+                canvasElement.removeEventListener('click', requestPointerLock);
+                document.removeEventListener('pointerlockchange', () => {});
+            }
         };
     });
+    
+    // Compute if pointer is locked (for the class binding)
+    $: isPointerLocked = isBrowser && document.pointerLockElement === canvasElement;
 </script>
 
 <canvas bind:this={canvasElement}></canvas>
 
-<div class="instructions" class:hidden={document.pointerLockElement === canvasElement}>
+<div class="instructions" class:hidden={isPointerLocked}>
     <h2>Voxel Game</h2>
     <p>Click to start</p>
     <div class="controls">
