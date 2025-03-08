@@ -58,12 +58,49 @@ git catshow <commit-hash>
 git catdiff --staged
 ```
 
+### setup-genz-git-aliases.sh
+
+For a more fun approach, we've created a script to set up Gen Z-themed Git aliases with culturally relevant terms. These aliases make Git commands more intuitive and engaging for modern developers.
+
+#### Usage
+
+```bash
+./scripts/git-helpers/setup-genz-git-aliases.sh
+```
+
+This will set up the following aliases:
+
+- `git vibes` - Check status (what's the vibe of your repo)
+- `git slay` - Add files (slay that staging area)
+- `git bet` - Commit changes (bet these changes are fire)
+- `git yeet` - Push changes (yeet your code to the remote)
+- `git sus` - View differences (find what's sus in your code)
+- `git nocap` - Show commit history (the real history, no cap)
+- `git fr` - Pull changes (for real, get the latest code)
+
+#### Examples
+
+```bash
+# Add all files to staging
+git slay .
+
+# Commit your changes
+git bet -m "Fixed that weird bug, no cap"
+
+# Push your commits to the remote repository
+git yeet
+
+# Pull the latest changes from the remote
+git fr
+```
+
 ## Why Use These Tools?
 
 - **Consistent Output**: Ensures that Git output is displayed consistently across different environments
 - **No Pagination**: Avoids the need to navigate through paginated output with less/more
 - **Better for Automation**: Makes it easier to capture and process Git output in scripts
 - **Improved Readability**: Displays all output at once, making it easier to review
+- **More Engaging**: The Gen Z aliases make Git commands more intuitive and fun to use
 
 ## General Git Best Practices
 
@@ -101,4 +138,16 @@ git config --global alias.catdiff 'diff --color=always | cat'
 git config --global alias.catshow 'show --color=always | cat'
 git config --global alias.catstatus 'status --color=always | cat'
 git config --global alias.catblame 'blame --color=always | cat'
+```
+
+### Manual Setup of Gen Z Git Aliases
+
+```bash
+git config --global alias.vibes 'status --color=always | cat'
+git config --global alias.slay 'add'
+git config --global alias.bet 'commit'
+git config --global alias.yeet 'push'
+git config --global alias.sus 'diff --color=always | cat'
+git config --global alias.nocap 'log --color=always | cat'
+git config --global alias.fr 'pull'
 ```
