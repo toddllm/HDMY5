@@ -22,7 +22,7 @@ sleep 5
 # Start the http-server for the demo page
 echo "Starting http-server for the demo page..."
 cd demos
-npx http-server -p 8080 --host 0.0.0.0 &
+npx http-server -p 8080 --host 0.0.0.0 -a 0.0.0.0 &
 HTTP_SERVER_PID=$!
 
 echo "Demo page is available at http://localhost:8080/voxel-engine/"
