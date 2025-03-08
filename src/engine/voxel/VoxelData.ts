@@ -4,7 +4,17 @@ export enum BlockType {
     GRASS = 2,
     STONE = 3,
     WOOD = 4,
-    LEAVES = 5
+    LEAVES = 5,
+    SAND = 6,
+    WATER = 7,
+    COAL_ORE = 8,
+    IRON_ORE = 9,
+    GOLD_ORE = 10,
+    DIAMOND_ORE = 11,
+    BEDROCK = 12,
+    COBBLESTONE = 13,
+    PLANKS = 14,
+    GLASS = 15
 }
 
 export class VoxelData {

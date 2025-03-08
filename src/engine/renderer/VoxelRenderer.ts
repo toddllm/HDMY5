@@ -187,15 +187,35 @@ export class VoxelRenderer {
     private getColorForBlockType(blockType: BlockType): [number, number, number] {
         switch (blockType) {
             case BlockType.DIRT:
-                return [0.5, 0.25, 0.0];
+                return [0.55, 0.27, 0.07];
             case BlockType.GRASS:
-                return [0.0, 0.8, 0.0];
+                return [0.2, 0.8, 0.2];
             case BlockType.STONE:
                 return [0.5, 0.5, 0.5];
             case BlockType.WOOD:
                 return [0.6, 0.3, 0.0];
             case BlockType.LEAVES:
                 return [0.0, 0.5, 0.0];
+            case BlockType.SAND:
+                return [0.76, 0.7, 0.5];
+            case BlockType.WATER:
+                return [0.0, 0.3, 0.8];
+            case BlockType.COAL_ORE:
+                return [0.2, 0.2, 0.2];
+            case BlockType.IRON_ORE:
+                return [0.7, 0.6, 0.5];
+            case BlockType.GOLD_ORE:
+                return [0.9, 0.8, 0.1];
+            case BlockType.DIAMOND_ORE:
+                return [0.0, 0.8, 0.8];
+            case BlockType.BEDROCK:
+                return [0.1, 0.1, 0.1];
+            case BlockType.COBBLESTONE:
+                return [0.4, 0.4, 0.4];
+            case BlockType.PLANKS:
+                return [0.8, 0.6, 0.3];
+            case BlockType.GLASS:
+                return [0.9, 0.9, 1.0];
             default:
                 return [1.0, 1.0, 1.0];
         }
