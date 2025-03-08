@@ -35,6 +35,13 @@
     let pitch = 0;
     let mouseSensitivity = 0.002;
     
+    // Add a mode toggle for placing/breaking blocks
+    let mode = 'break'; // 'break' or 'place'
+    
+    function toggleMode() {
+        mode = mode === 'break' ? 'place' : 'break';
+    }
+    
     function handleKeyDown(event: KeyboardEvent) {
         keys.add(event.code);
         
@@ -50,6 +57,11 @@
         if (event.code === 'Space' && !isJumping) {
             isJumping = true;
             verticalVelocity = jumpStrength;
+        }
+        
+        // Toggle between place/break mode with 'F' key
+        if (event.code === 'KeyF' && !event.repeat) {
+            toggleMode();
         }
     }
     
@@ -99,25 +111,48 @@
         }
         
         if (hitPos) {
-            // Left click destroys blocks
+            // Left click behavior depends on mode
             if (event.button === 0) {
-                engine.setBlock(hitPos.x, hitPos.y, hitPos.z, BlockType.AIR);
+                if (mode === 'break') {
+                    // Break block
+                    engine.setBlock(hitPos.x, hitPos.y, hitPos.z, BlockType.AIR);
+                } else {
+                    // Place block
+                    const normal = getNormal(pos, hitPos);
+                    const placeX = hitPos.x + normal.x;
+                    const placeY = hitPos.y + normal.y;
+                    const placeZ = hitPos.z + normal.z;
+                    
+                    // Don't place blocks inside the player
+                    const playerX = Math.floor(pos.x);
+                    const playerY = Math.floor(pos.y);
+                    const playerZ = Math.floor(pos.z);
+                    
+                    if (placeX !== playerX || placeY !== playerY || placeZ !== playerZ) {
+                        engine.setBlock(placeX, placeY, placeZ, blockTypes[selectedBlockIndex].type);
+                    }
+                }
             }
-            // Right click places blocks
+            // Right click (if available) always does the opposite of current mode
             else if (event.button === 2) {
-                // Calculate position adjacent to the hit block
-                const normal = getNormal(pos, hitPos);
-                const placeX = hitPos.x + normal.x;
-                const placeY = hitPos.y + normal.y;
-                const placeZ = hitPos.z + normal.z;
-                
-                // Don't place blocks inside the player
-                const playerX = Math.floor(pos.x);
-                const playerY = Math.floor(pos.y);
-                const playerZ = Math.floor(pos.z);
-                
-                if (placeX !== playerX || placeY !== playerY || placeZ !== playerZ) {
-                    engine.setBlock(placeX, placeY, placeZ, blockTypes[selectedBlockIndex].type);
+                if (mode === 'break') {
+                    // Place block
+                    const normal = getNormal(pos, hitPos);
+                    const placeX = hitPos.x + normal.x;
+                    const placeY = hitPos.y + normal.y;
+                    const placeZ = hitPos.z + normal.z;
+                    
+                    // Don't place blocks inside the player
+                    const playerX = Math.floor(pos.x);
+                    const playerY = Math.floor(pos.y);
+                    const playerZ = Math.floor(pos.z);
+                    
+                    if (placeX !== playerX || placeY !== playerY || placeZ !== playerZ) {
+                        engine.setBlock(placeX, placeY, placeZ, blockTypes[selectedBlockIndex].type);
+                    }
+                } else {
+                    // Break block
+                    engine.setBlock(hitPos.x, hitPos.y, hitPos.z, BlockType.AIR);
                 }
             }
         }
@@ -325,8 +360,9 @@
                     <li>W/A/S/D: Move</li>
                     <li>Space: Jump</li>
                     <li>Mouse: Look around</li>
-                    <li>Left Click: Break block</li>
-                    <li>Right Click: Place block</li>
+                    <li>Left Click: {mode === 'break' ? 'Break block' : 'Place block'}</li>
+                    <li>Right Click: {mode === 'break' ? 'Place block' : 'Break block'}</li>
+                    <li>F: Toggle between break/place mode</li>
                     <li>1-9: Select block</li>
                     <li>Mouse Wheel: Cycle blocks</li>
                     <li>ESC: Release mouse</li>
@@ -336,6 +372,11 @@
     {:else}
         <!-- Crosshair -->
         <div class="crosshair">+</div>
+        
+        <!-- Mode indicator -->
+        <div class="mode-indicator">
+            Mode: {mode === 'break' ? 'Break' : 'Place'} (Press F to toggle)
+        </div>
         
         <!-- Hotbar -->
         <div class="hotbar">
@@ -457,5 +498,17 @@
         left: 2px;
         font-size: 10px;
         color: white;
+    }
+    
+    .mode-indicator {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background-color: rgba(0, 0, 0, 0.5);
+        color: white;
+        padding: 5px 10px;
+        border-radius: 5px;
+        font-family: sans-serif;
+        pointer-events: none;
     }
 </style> 
