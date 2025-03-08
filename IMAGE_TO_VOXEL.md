@@ -64,12 +64,23 @@ If you prefer to run the steps individually:
 1. Start the development server:
 
    ```bash
+   # For local-only access
    npm run dev
+
+   # For external access (accessible from other devices)
+   npm run dev -- --host
    ```
 
 2. Open your browser and navigate to:
+
    ```
    http://localhost:5173/custom-voxel
+   ```
+
+   If using the `--host` flag, you can also access it from other devices on your network using your machine's IP address:
+
+   ```
+   http://<your-machine-ip>:5173/custom-voxel
    ```
 
 ## How It Works
