@@ -213,3 +213,34 @@ This will scan all Svelte components for common accessibility issues, such as:
 3. **Use TypeScript Properly**: Make sure to properly type your code to avoid TypeScript errors.
 
 4. **Follow Accessibility Guidelines**: Fix accessibility warnings in the Svelte components to ensure the application is accessible to all users.
+
+## SSH Key Setup for GitHub
+
+The dev container is configured to automatically set up SSH keys for GitHub access. This is handled by the `setup-ssh.sh` script, which is run as part of the container creation process.
+
+### How It Works
+
+1. When the dev container is created, the `setup-ssh.sh` script checks if an SSH key exists.
+2. If no key exists, it generates a new SSH key and displays the public key.
+3. You need to add this public key to your GitHub account at https://github.com/settings/keys.
+4. The script also configures SSH to use this key for GitHub connections.
+
+### Manual Setup
+
+If you need to manually set up SSH keys, you can run:
+
+```bash
+./setup-ssh.sh
+```
+
+This will generate a new key if one doesn't exist and display instructions for adding it to GitHub.
+
+### Testing the Connection
+
+To test if your SSH key is working correctly with GitHub:
+
+```bash
+ssh -T git@github.com
+```
+
+If successful, you'll see a message like: "Hi username! You've successfully authenticated, but GitHub does not provide shell access."

@@ -1,14 +1,28 @@
 {
   "name": "Game Builder Development",
   "dockerFile": "Dockerfile",
-  "forwardPorts": [5173, 5174, 5175, 5176, 5177, 5178, 5179, 5180],
+  "forwardPorts": [
+    5173,
+    5174,
+    5175,
+    5176,
+    5177,
+    5178,
+    5179,
+    5180,
+    9323
+  ],
   "portsAttributes": {
     "5173-5180": {
       "label": "Vite Dev Server",
       "onAutoForward": "notify"
+    },
+    "9323": {
+      "label": "Playwright Report Server",
+      "onAutoForward": "notify"
     }
   },
-  "postCreateCommand": "npm install",
+  "postCreateCommand": "npm install && npx playwright install --with-deps chromium && chmod +x *.sh && ./setup-ssh.sh",
   "customizations": {
     "vscode": {
       "extensions": [
