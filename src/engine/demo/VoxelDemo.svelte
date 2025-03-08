@@ -72,22 +72,28 @@
     function handleMouseMove(event: MouseEvent) {
         if (!isPointerLocked) return;
         
-        // Update camera rotation
-        yaw -= event.movementX * mouseSensitivity;
+        // Update camera rotation - fix the direction
+        yaw += event.movementX * mouseSensitivity;  // Changed from -= to += to fix rotation
         pitch -= event.movementY * mouseSensitivity;
         
         // Clamp pitch to avoid flipping
         pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, pitch));
+        
+        // Update view direction in the engine
+        if (engine) {
+            const viewDir = getViewDirection();
+            engine.setViewDirection(viewDir.x, viewDir.y, viewDir.z);
+        }
     }
     
     function handleClick(event: MouseEvent) {
-        if (!engine || !isPointerLocked) return;
-        
         // Request pointer lock if not already locked
         if (!isPointerLocked) {
             canvasElement.requestPointerLock();
             return;
         }
+        
+        if (!engine) return;
         
         const pos = engine.getPlayerPosition();
         const direction = getViewDirection();
@@ -228,36 +234,34 @@
             }
         }
         
-        // Calculate movement direction based on camera rotation
-        const forward = {
-            x: Math.sin(yaw),
-            z: Math.cos(yaw)
-        };
+        // Calculate movement direction based on yaw
+        let moveX = 0;
+        let moveZ = 0;
         
-        const right = {
-            x: Math.sin(yaw + Math.PI / 2),
-            z: Math.cos(yaw + Math.PI / 2)
-        };
-        
-        // Handle keyboard input for movement
         if (keys.has('KeyW')) {
-            x += forward.x * playerSpeed;
-            z += forward.z * playerSpeed;
+            // W should move forward in the direction the player is facing
+            moveX += Math.sin(yaw) * playerSpeed;
+            moveZ += Math.cos(yaw) * playerSpeed;
         }
         if (keys.has('KeyS')) {
-            x -= forward.x * playerSpeed;
-            z -= forward.z * playerSpeed;
+            // S should move backward from the direction the player is facing
+            moveX -= Math.sin(yaw) * playerSpeed;
+            moveZ -= Math.cos(yaw) * playerSpeed;
         }
         if (keys.has('KeyA')) {
-            x -= right.x * playerSpeed;
-            z -= right.z * playerSpeed;
+            // A should move left relative to the direction the player is facing
+            moveX += Math.cos(yaw) * playerSpeed;
+            moveZ -= Math.sin(yaw) * playerSpeed;
         }
         if (keys.has('KeyD')) {
-            x += right.x * playerSpeed;
-            z += right.z * playerSpeed;
+            // D should move right relative to the direction the player is facing
+            moveX -= Math.cos(yaw) * playerSpeed;
+            moveZ += Math.sin(yaw) * playerSpeed;
         }
         
         // Update player position
+        x += moveX;
+        z += moveZ;
         engine.setPlayerPosition(x, y, z);
     }
     
@@ -305,6 +309,10 @@
         // Set initial player position
         engine.setPlayerPosition(8, 30, 8);
         
+        // Set initial view direction
+        const viewDir = getViewDirection();
+        engine.setViewDirection(viewDir.x, viewDir.y, viewDir.z);
+        
         // Set initial canvas size
         handleResize();
         
@@ -351,7 +359,7 @@
     ></canvas>
     
     {#if !isPointerLocked}
-        <div class="start-screen">
+        <div class="start-screen" on:click={() => canvasElement.requestPointerLock()}>
             <h2>Minecraft-like Voxel Demo</h2>
             <p>Click to start</p>
             <div class="controls-info">
