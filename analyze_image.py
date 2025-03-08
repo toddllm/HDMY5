@@ -4,6 +4,7 @@ import sys
 import base64
 import requests
 import json
+import datetime
 from dotenv import load_dotenv
 
 # Load environment variables from .env file (if exists)
@@ -107,9 +108,22 @@ if __name__ == "__main__":
     print(result)
     print("\n============================\n")
     
+    # Generate timestamp for the filename
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    # Extract the base name of the input image
+    image_basename = os.path.basename(image_path).split('.')[0]
+    
+    # Create the output filename
+    output_file = f"image_analysis_{image_basename}_{timestamp}.txt"
+    
     # Save the analysis to a file
-    output_file = "image_analysis_result.txt"
     with open(output_file, "w") as f:
         f.write(result)
     
-    print(f"Analysis saved to {output_file}") 
+    # Also save to the standard filename for the implementation script
+    with open("image_analysis_result.txt", "w") as f:
+        f.write(result)
+    
+    print(f"Analysis saved to {output_file}")
+    print(f"A copy was also saved to image_analysis_result.txt for use with the implementation script") 

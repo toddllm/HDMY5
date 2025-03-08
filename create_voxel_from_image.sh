@@ -53,4 +53,5 @@ fi
 
 echo "Success! Your custom voxel element has been created."
 echo "You can view it at: http://localhost:5173/custom-voxel"
+echo "All analysis results and generated components are saved with timestamps to prevent overwriting previous results."
 echo "Make sure your development server is running with: npm run dev" 

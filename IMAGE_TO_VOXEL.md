@@ -78,12 +78,18 @@ If you prefer to run the steps individually:
 
    - Sends your image to OpenAI's GPT-4o model (which includes vision capabilities)
    - Requests a detailed analysis focused on elements that could be recreated in a voxel game
-   - Saves the analysis to a text file
+   - Saves the analysis to a timestamped file (`image_analysis_{image_name}_{timestamp}.txt`)
+   - Also saves a copy to `image_analysis_result.txt` for use with the implementation script
 
 2. The `implement_voxel_element.py` script:
    - Extracts key information from the analysis (colors, patterns, structures, etc.)
-   - Generates a Svelte component that creates voxel elements based on the extracted information
-   - Creates a route to view the custom voxel element
+   - Generates Svelte components that create voxel elements based on the extracted information:
+     - A timestamped version (`CustomVoxelElement_{timestamp}.svelte`) for archiving
+     - A standard version (`CustomVoxelElement.svelte`) for easy access
+   - Creates routes to view the custom voxel element:
+     - Standard route at `/custom-voxel`
+     - Archived version with timestamp reference for historical tracking
+   - All generated files include creation timestamps to preserve analysis history
 
 ## Troubleshooting
 

@@ -3,6 +3,7 @@ import sys
 import os
 import re
 import json
+import datetime
 
 def extract_color_codes(text):
     """Extract hex color codes from text"""
@@ -163,9 +164,16 @@ def main(analysis_file):
     print(f"Structures: {elements['structures']}")
     print(f"Patterns: {elements['patterns']}")
     
-    # Generate Svelte component
-    output_file = "src/lib/components/voxel/CustomVoxelElement.svelte"
-    generate_svelte_component(elements, output_file)
+    # Generate timestamp for unique filenames
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    # Generate Svelte component with timestamp
+    base_output_file = "src/lib/components/voxel/CustomVoxelElement.svelte"
+    timestamped_output_file = f"src/lib/components/voxel/CustomVoxelElement_{timestamp}.svelte"
+    
+    # Create both versions: one with timestamp (for archiving) and one standard (for easy access)
+    generate_svelte_component(elements, timestamped_output_file)
+    generate_svelte_component(elements, base_output_file)
     
     # Generate route file to showcase the custom element
     route_file = "src/routes/custom-voxel/+page.svelte"
@@ -175,14 +183,14 @@ def main(analysis_file):
     os.makedirs(route_dir, exist_ok=True)
     
     with open(route_file, 'w') as f:
-        f.write("""<script lang="ts">
+        f.write(f"""<script lang="ts">
     import CustomVoxelElement from '$lib/components/voxel/CustomVoxelElement.svelte';
     import VoxelGameCanvas from '$lib/components/voxel/VoxelGameCanvas.svelte';
 </script>
 
 <div class="container">
     <h1>Custom Voxel Element</h1>
-    <p>This element was generated based on image analysis</p>
+    <p>This element was generated based on image analysis on {datetime.datetime.now().strftime("%Y-%m-%d at %H:%M:%S")}</p>
     <div class="game-container">
         <VoxelGameCanvas />
     </div>
@@ -190,35 +198,82 @@ def main(analysis_file):
 </div>
 
 <style>
-    .container {
+    .container {{
         display: flex;
         flex-direction: column;
         align-items: center;
         width: 100%;
         height: 100vh;
-    }
+    }}
     
-    h1 {
+    h1 {{
         color: white;
         text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
         margin-top: 1rem;
         margin-bottom: 0.5rem;
-    }
+    }}
     
-    p {
+    p {{
         color: white;
         margin-bottom: 1rem;
-    }
+    }}
     
-    .game-container {
+    .game-container {{
         width: 100%;
         height: 80vh;
         position: relative;
-    }
+    }}
+</style>
+""")
+    
+    # Save a timestamped copy of the route file for reference
+    timestamped_route_file = f"src/routes/custom-voxel/+page_{timestamp}.svelte"
+    with open(timestamped_route_file, 'w') as f:
+        f.write(f"""<script lang="ts">
+    import CustomVoxelElement from '$lib/components/voxel/CustomVoxelElement_{timestamp}.svelte';
+    import VoxelGameCanvas from '$lib/components/voxel/VoxelGameCanvas.svelte';
+</script>
+
+<div class="container">
+    <h1>Custom Voxel Element (Archived Version)</h1>
+    <p>This element was generated based on image analysis on {datetime.datetime.now().strftime("%Y-%m-%d at %H:%M:%S")}</p>
+    <div class="game-container">
+        <VoxelGameCanvas />
+    </div>
+    <CustomVoxelElement />
+</div>
+
+<style>
+    .container {{
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        height: 100vh;
+    }}
+    
+    h1 {{
+        color: white;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
+    }}
+    
+    p {{
+        color: white;
+        margin-bottom: 1rem;
+    }}
+    
+    .game-container {{
+        width: 100%;
+        height: 80vh;
+        position: relative;
+    }}
 </style>
 """)
     
     print(f"Generated route page at {route_file}")
+    print(f"Archived version saved to {timestamped_route_file}")
     print(f"\nYou can now view your custom voxel element at /custom-voxel")
 
 if __name__ == "__main__":
