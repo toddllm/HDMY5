@@ -85,6 +85,22 @@ npm run test:e2e:voxel
 
 The visual and voxel tests run in headless mode but generate screenshots that you can view after the tests complete. Screenshots are saved to the project root directory.
 
+### Running Tests in Headed Mode
+
+If you want to watch the tests execute in a browser window, you can run them in headed mode:
+
+```bash
+npm run test:e2e:visual:headed
+npm run test:e2e:voxel:headed
+```
+
+Note: Running tests in headed mode requires X11 forwarding to be set up in your dev container. If you're using VS Code Remote Containers, you may need to:
+
+1. Install an X server on your host machine (like VcXsrv on Windows or XQuartz on macOS)
+2. Configure your devcontainer.json to enable X11 forwarding
+
+If you see an error about the DISPLAY environment variable not being set, it means X11 forwarding is not properly configured.
+
 ### Viewing Test Reports
 
 Playwright generates HTML reports for test runs. To view the report:
