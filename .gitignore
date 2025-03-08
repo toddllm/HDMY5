@@ -58,3 +58,4 @@ source.me
 
 # Python virtual environment
 .venv/
+data/image_analysis/
