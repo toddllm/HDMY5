@@ -1,0 +1,11 @@
+theme: jekyll-theme-cayman
+title: HDMY5 Game Builder
+description: A powerful tool for creating interactive games and voxel environments
+baseurl: ""
+url: ""
+github_username: toddllm
+repository: toddllm/HDMY5
+plugins:
+  - jekyll-seo-tag
+exclude:
+  - README.md
