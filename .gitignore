@@ -1,1 +1,8 @@
- 
+ # Screenshot and image files for testing only
+*-initial.png
+*-final.png
+found-*.png
+app-loaded.png
+page-structure.png
+ui-elements-*.png
+interactive-elements-*.png 
