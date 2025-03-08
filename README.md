@@ -36,6 +36,7 @@ npm run build
 You can preview the production build with `npm run preview`.
 
 > To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+
 # HDMY5
 
 ## Development Container
@@ -67,3 +68,68 @@ The application is designed to work on all platforms:
 - **Mobile/Touch Devices**: Basic support with touch controls
 
 The development container ensures a consistent development experience across all platforms.
+
+## Testing in the Dev Container
+
+This project is set up to run tests inside a development container. The container provides a consistent environment for testing across different machines.
+
+### Running Tests
+
+- **Unit Tests**: `npm test`
+- **End-to-End Tests**: `npm run test:e2e`
+- **Simplified E2E Tests**: `npm run test:e2e:simple` (more reliable in the dev container)
+- **Visual Tests**: `./scripts/test/run-visual-tests.sh` (requires Xvfb)
+- **Dialog Tests**: `./scripts/test/run-add-object-test.sh` (tests the "Add Object" dialog)
+- **All Tests**: `npm run test:all`
+
+### Visual Testing with Xvfb
+
+The project includes scripts for running visual tests with Xvfb, which allows running tests with a virtual display server:
+
+```bash
+# Run visual tests and generate an HTML gallery of screenshots
+./scripts/test/run-visual-tests.sh
+
+# Test the "Add Object" button functionality
+./scripts/test/run-add-object-test.sh
+
+# Run a debug test for troubleshooting UI issues
+./scripts/test/cleanup-and-test.sh
+```
+
+These scripts will:
+
+1. Start a development server
+2. Run tests with Playwright and Xvfb
+3. Generate screenshots
+4. Create an HTML gallery to view the screenshots
+5. Start an HTTP server to serve the gallery
+
+For more information about the test scripts, see [scripts/test/README.md](scripts/test/README.md).
+
+### Viewing Test Reports
+
+Playwright generates HTML reports for test runs. To view the report:
+
+```bash
+npm run report:show
+```
+
+This will start a local server on port 9323. You can access the report by opening a browser on your host machine and navigating to http://localhost:9323.
+
+If you have trouble accessing the report, you may need to rebuild the dev container with the correct configuration:
+
+```bash
+./scripts/rebuild-devcontainer.sh
+```
+
+This script will fix the devcontainer.json file and provide instructions for rebuilding the container.
+
+### Screenshots
+
+The tests also generate screenshots that are saved to the project root directory:
+
+- `app-loaded.png`: Shows the application after it has loaded
+- `add-object-button.png`: Shows the application with the "Add Object" button
+
+For more detailed information about the dev container and testing, see the [Dev Container Guide](DEV_CONTAINER_GUIDE.md).

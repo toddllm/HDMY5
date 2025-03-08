@@ -24,7 +24,17 @@
     }
     
     function handleAddObject() {
+        console.log('Add Object button clicked');
         showObjectDialog = true;
+        console.log('showObjectDialog set to:', showObjectDialog);
+        
+        // Force a UI update by using setTimeout
+        setTimeout(() => {
+            if (!showObjectDialog) {
+                console.log('Dialog not showing, forcing it open');
+                showObjectDialog = true;
+            }
+        }, 100);
     }
     
     function handleAddEntity() {
@@ -79,7 +89,6 @@
     // Helper for displaying object properties based on type
     $: objectProperties = $selectedObject?.properties;
     $: isEntity = $selectedObject?.type === 'entity';
-    $: is2DObject = $selectedObject?.type === '2d';
     $: is3DObject = $selectedObject?.type === '3d';
 </script>
 
