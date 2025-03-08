@@ -22,7 +22,7 @@
       "onAutoForward": "notify"
     }
   },
-  "postCreateCommand": "npm install && npx playwright install --with-deps chromium && chmod +x *.sh && ./setup-ssh.sh",
+  "postCreateCommand": "npm install && npx playwright install --with-deps chromium && chmod +x *.sh && ./setup-ssh.sh && ([ ! -z \"$GH_TOKEN\" ] && ./setup-github-auth.sh || echo \"Skipping GitHub auth: GH_TOKEN not set\")",
   "customizations": {
     "vscode": {
       "extensions": [
@@ -53,6 +53,8 @@
   },
   "runArgs": [
     "-e",
-    "DISPLAY=host.docker.internal:0"
+    "DISPLAY=host.docker.internal:0",
+    "-e",
+    "GH_TOKEN=${localEnv:GH_TOKEN}"
   ]
 }

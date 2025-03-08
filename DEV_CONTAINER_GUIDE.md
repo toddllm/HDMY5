@@ -260,3 +260,48 @@ ssh -T git@github.com
 ```
 
 If successful, you'll see a message like: "Hi username! You've successfully authenticated, but GitHub does not provide shell access."
+
+## GitHub Authentication
+
+The dev container supports automated GitHub authentication using a Personal Access Token (PAT). This allows you to push and pull from GitHub repositories without having to manually authenticate each time.
+
+### Setting Up Automated GitHub Authentication
+
+1. **Create a GitHub Personal Access Token**:
+
+   - Go to https://github.com/settings/tokens
+   - Click "Generate new token (classic)"
+   - Give it a name (e.g., "Game Builder Dev Container")
+   - Select the `repo` and `read:org` scopes
+   - Click "Generate token"
+   - Copy the token (you won't be able to see it again)
+
+2. **Set the GH_TOKEN Environment Variable**:
+
+   - On your host machine, set the `GH_TOKEN` environment variable to your token:
+     ```bash
+     export GH_TOKEN=your_token_here
+     ```
+   - For persistent storage, add this to your shell profile (e.g., `~/.bashrc`, `~/.zshrc`)
+
+3. **Rebuild the Dev Container**:
+   - The dev container will automatically use the token to authenticate with GitHub
+   - The token is passed to the container via the `GH_TOKEN` environment variable
+   - The `setup-github-auth.sh` script configures Git to use HTTPS authentication with the token
+
+### Manual GitHub Authentication
+
+If you prefer not to use the automated method, you can manually authenticate:
+
+1. **Using GitHub CLI**:
+
+   ```bash
+   gh auth login
+   ```
+
+   Follow the prompts to authenticate with GitHub.
+
+2. **Using SSH Keys**:
+   - Generate an SSH key pair with `ssh-keygen`
+   - Add the public key to your GitHub account
+   - Test the connection with `ssh -T git@github.com`
