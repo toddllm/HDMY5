@@ -11,18 +11,23 @@ export function startStateCapture(intervalMs = 5000): (() => void) | null {
 
   const captureState = () => {
     try {
-      // Check which component indicators are present
-      const imageBasedIndicator = document.querySelector(
+      // Check which component indicators are present using the DOM API
+      const componentIndicators = document.querySelectorAll(
         ".component-indicator p"
       );
-      const simpleTestIndicator = document.querySelector(
-        ".component-indicator p"
-      );
+      let imageBasedVisible = false;
+      let simpleTestVisible = false;
 
-      const imageBasedVisible =
-        imageBasedIndicator?.textContent?.includes("IMAGE-BASED") || false;
-      const simpleTestVisible =
-        simpleTestIndicator?.textContent?.includes("SIMPLE TEST") || false;
+      // Check text content of each indicator
+      componentIndicators.forEach((indicator) => {
+        const text = indicator.textContent || "";
+        if (text.includes("IMAGE-BASED")) {
+          imageBasedVisible = true;
+        }
+        if (text.includes("SIMPLE TEST")) {
+          simpleTestVisible = true;
+        }
+      });
 
       // Get the button text
       const buttonText = document
@@ -32,8 +37,8 @@ export function startStateCapture(intervalMs = 5000): (() => void) | null {
       // Check visibility state
       const state = {
         timestamp: new Date().toISOString(),
-        imageBasedVisible: imageBasedVisible,
-        simpleTestVisible: simpleTestVisible,
+        imageBasedVisible,
+        simpleTestVisible,
         buttonText: buttonText || "Not found",
         url: window.location.href,
         screenDimensions: `${window.innerWidth}x${window.innerHeight}`,
@@ -76,19 +81,25 @@ export function detectComponentIssues(): (() => void) | null {
 
   // Check for visibility issues using MutationObserver
   const observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-      if (mutation.type === "childList" || mutation.type === "attributes") {
-        const imageBasedIndicator = document.querySelector(
+    mutations.forEach(() => {
+      try {
+        // Check which component indicators are present using the DOM API
+        const componentIndicators = document.querySelectorAll(
           ".component-indicator p"
         );
-        const simpleTestIndicator = document.querySelector(
-          ".component-indicator p"
-        );
+        let imageBasedActive = false;
+        let simpleTestActive = false;
 
-        const imageBasedActive =
-          imageBasedIndicator?.textContent?.includes("IMAGE-BASED") || false;
-        const simpleTestActive =
-          simpleTestIndicator?.textContent?.includes("SIMPLE TEST") || false;
+        // Check text content of each indicator
+        componentIndicators.forEach((indicator) => {
+          const text = indicator.textContent || "";
+          if (text.includes("IMAGE-BASED")) {
+            imageBasedActive = true;
+          }
+          if (text.includes("SIMPLE TEST")) {
+            simpleTestActive = true;
+          }
+        });
 
         if (imageBasedActive && simpleTestActive) {
           console.error(
@@ -99,6 +110,8 @@ export function detectComponentIssues(): (() => void) | null {
         if (!imageBasedActive && !simpleTestActive) {
           console.warn("WARNING: No component indicators detected in the DOM");
         }
+      } catch (err) {
+        console.error("Error in component issue detection:", err);
       }
     });
   });
