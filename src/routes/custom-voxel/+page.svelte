@@ -3,8 +3,8 @@
     import SimpleVoxelTest from '$lib/components/voxel/SimpleVoxelTest.svelte';
     import VoxelGameCanvas from '$lib/components/voxel/VoxelGameCanvas.svelte';
     
-    // Flag to use the simple component as fallback if needed
-    let useSimpleTest = true;
+    // Flag to use the image-based component by default
+    let useSimpleTest = false;
 </script>
 
 <div class="container">
@@ -13,7 +13,7 @@
     
     <div class="controls">
         <button on:click={() => useSimpleTest = !useSimpleTest}>
-            {useSimpleTest ? 'Try Advanced Component' : 'Use Simple Component'}
+            {useSimpleTest ? 'Show Image-based Scene' : 'Use Simple Component'}
         </button>
         <p>Currently using: <strong>{useSimpleTest ? 'Simple Test' : 'Image-based'}</strong> component</p>
     </div>

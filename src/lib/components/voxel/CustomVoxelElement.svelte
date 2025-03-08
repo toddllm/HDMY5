@@ -26,9 +26,20 @@
         }));
     }
     
+    // Update player position to better view the scene
+    function setPlayerPosition() {
+        voxelGameStore.update(state => ({
+            ...state,
+            playerPosition: { x: 0, y: 5, z: 12 },
+            playerRotation: { yaw: 180, pitch: 0 }
+        }));
+    }
+    
     onMount(() => {
         try {
             console.log("CustomVoxelElement mounted");
+            // Set player position first
+            setPlayerPosition();
             createSceneFromAnalysis();
         } catch (e) {
             console.error("General error in onMount:", e);
@@ -86,7 +97,8 @@
     
     async function createCharacter() {
         try {
-            const centerX = 4;
+            // Place character in front of the player's view
+            const centerX = 0;
             const centerZ = 0;
             const baseHeight = 1;
             
@@ -156,8 +168,9 @@
     
     async function createTrident() {
         try {
-            const centerX = 0;
-            const centerZ = 4;
+            // Position the trident to the left of the character
+            const centerX = -5;
+            const centerZ = 0;
             const baseHeight = 1;
             
             // Trident handle (black)
@@ -170,9 +183,9 @@
             addVoxel(mapColorToVoxelType(colors.tridentTips), centerX, baseHeight + 7, centerZ);
             addVoxel(mapColorToVoxelType(colors.tridentTips), centerX + 1, baseHeight + 6, centerZ);
             
-            // Ring-like object (orange outline)
-            const ringX = centerX - 4;
-            const ringZ = centerZ - 2;
+            // Ring-like object (orange outline) - positioned to the right of the character
+            const ringX = 5;
+            const ringZ = 0;
             addVoxel(mapColorToVoxelType(colors.orange), ringX - 1, baseHeight + 4, ringZ);
             addVoxel(mapColorToVoxelType(colors.orange), ringX, baseHeight + 5, ringZ);
             addVoxel(mapColorToVoxelType(colors.orange), ringX + 1, baseHeight + 4, ringZ);

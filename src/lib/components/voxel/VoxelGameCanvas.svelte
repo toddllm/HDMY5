@@ -9,8 +9,8 @@
     let error: string | null = null;
     
     // Camera position and rotation
-    let cameraPosition = { x: 0, y: 2, z: 5 };
-    let cameraRotation = { yaw: 0, pitch: 0 };
+    let cameraPosition = { x: 0, y: 5, z: 12 }; // Better initial position to see the character
+    let cameraRotation = { yaw: 180, pitch: 0 }; // Face toward the character
     
     // Grid settings
     const gridSize = 20;
@@ -24,6 +24,9 @@
         player: '#FF0000',
         text: '#FFFFFF'
     };
+    
+    // Tutorial state
+    let showHelp = true;
     
     // Check if we're in the browser
     const isBrowser = typeof window !== 'undefined';
@@ -44,22 +47,22 @@
                 z: Math.cos((cameraRotation.yaw + 90) * Math.PI / 180)
             };
             
-            // Handle movement keys
+            // Handle movement keys - FIXED WASD directions
             switch (event.code) {
                 case 'KeyW':
                     cameraPosition.x += forward.x * speed;
-                    cameraPosition.z += forward.z * speed;
+                    cameraPosition.z -= forward.z * speed;
                     break;
                 case 'KeyS':
                     cameraPosition.x -= forward.x * speed;
-                    cameraPosition.z -= forward.z * speed;
+                    cameraPosition.z += forward.z * speed;
                     break;
                 case 'KeyA':
-                    cameraPosition.x += right.x * speed;
+                    cameraPosition.x -= right.x * speed;
                     cameraPosition.z += right.z * speed;
                     break;
                 case 'KeyD':
-                    cameraPosition.x -= right.x * speed;
+                    cameraPosition.x += right.x * speed;
                     cameraPosition.z -= right.z * speed;
                     break;
                 case 'Space':
@@ -105,6 +108,7 @@
     function requestPointerLock() {
         if (isBrowser) {
             canvasElement.requestPointerLock();
+            showHelp = false; // Hide help after clicking
         }
     }
     
@@ -282,7 +286,7 @@
 
 <canvas bind:this={canvasElement} class="voxel-canvas"></canvas>
 
-<div class="instructions" class:hidden={isPointerLocked}>
+<div class="instructions" class:hidden={isPointerLocked || !showHelp}>
     <h2>Voxel Game</h2>
     <p>Click to start</p>
     <div class="controls">
