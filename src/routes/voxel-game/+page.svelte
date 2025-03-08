@@ -1,9 +1,13 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import VoxelGameCanvas from '../../lib/components/voxel/VoxelGameCanvas.svelte';
+    import { generateFlatTerrain } from '../../lib/stores/voxel/voxelGameStore';
     
     onMount(() => {
         console.log('Voxel Game mounted');
+        
+        // Generate a simple flat terrain
+        generateFlatTerrain(8, 0);
     });
 </script>
 
