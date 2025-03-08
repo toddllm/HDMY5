@@ -5,7 +5,7 @@ This tool allows you to analyze an image and convert it into voxel elements for 
 ## Prerequisites
 
 1. Python 3.x with `venv` module
-2. An OpenAI API key with access to GPT-4 Vision API
+2. An OpenAI API key with access to GPT-4o (which includes vision capabilities)
 3. The HDMY5 Game Builder codebase
 
 ## Setup
@@ -33,7 +33,7 @@ The easiest way to use this tool is with the all-in-one script:
 
 This will:
 
-1. Analyze the image using OpenAI's GPT-4 Vision API
+1. Analyze the image using OpenAI's GPT-4o model (which includes vision capabilities)
 2. Extract key elements like colors, patterns, and structures
 3. Generate a Svelte component that creates voxel elements based on the analysis
 4. Create a route to view your custom voxel element
@@ -76,7 +76,7 @@ If you prefer to run the steps individually:
 
 1. The `analyze_image.py` script:
 
-   - Sends your image to OpenAI's GPT-4 Vision API
+   - Sends your image to OpenAI's GPT-4o model (which includes vision capabilities)
    - Requests a detailed analysis focused on elements that could be recreated in a voxel game
    - Saves the analysis to a text file
 
@@ -87,7 +87,7 @@ If you prefer to run the steps individually:
 
 ## Troubleshooting
 
-- **API Key Issues**: Make sure your OpenAI API key is correctly set in the `source.me` file and that you have access to the GPT-4 Vision API.
+- **API Key Issues**: Make sure your OpenAI API key is correctly set in the `source.me` file and that you have access to the GPT-4o model.
 - **Python Dependencies**: If you encounter errors with Python dependencies, try manually installing them:
   ```bash
   python3 -m venv .venv

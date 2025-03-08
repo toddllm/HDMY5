@@ -11,7 +11,10 @@ load_dotenv()
 
 def analyze_image(image_path):
     """
-    Analyze an image using OpenAI's GPT-4 Vision API.
+    Analyze an image using OpenAI's GPT-4o model with vision capabilities.
+    
+    GPT-4o is the current model that supports image analysis (as of 2024),
+    replacing the older gpt-4-vision-preview model.
     
     Args:
         image_path: Path to the image file
@@ -42,7 +45,7 @@ def analyze_image(image_path):
     }
     
     payload = {
-        "model": "gpt-4-vision-preview",
+        "model": "gpt-4o",
         "messages": [
             {
                 "role": "user",
@@ -60,7 +63,7 @@ def analyze_image(image_path):
                 ]
             }
         ],
-        "max_tokens": 1000
+        "max_tokens": 4000
     }
     
     # Make the API request
