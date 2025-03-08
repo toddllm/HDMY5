@@ -1,0 +1,43 @@
+/* Custom styles to improve contrast and visibility */
+
+.highlight-link {
+  color: #ffeb3b !important; /* Bright yellow */
+  font-weight: bold;
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+
+.highlight-link:hover {
+  color: #ffffff !important;
+  text-decoration: none;
+}
+
+.demo-container .note a {
+  color: #f44336 !important; /* Bright red */
+  font-weight: bold;
+}
+
+.demo-container .note a:hover {
+  color: #d32f2f !important;
+}
+
+/* Ensure the hero section links are always visible */
+.hero-content a {
+  color: #ffeb3b;
+  font-weight: bold;
+}
+
+.hero-content a:hover {
+  color: #ffffff;
+}
+
+/* Make sure all demo section links are visible */
+.demo-section a {
+  color: #f44336;
+  font-weight: bold;
+  transition: color 0.2s;
+}
+
+.demo-section a:hover {
+  color: #d32f2f;
+}
