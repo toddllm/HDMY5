@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  app:
+    build: 
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      - ..:/workspace:cached
+      - node_modules:/workspace/node_modules
+    command: sleep infinity
+    environment:
+      - NODE_ENV=development
+    ports:
+      - "5173-5180:5173-5180"
+    # Use "forwardPorts" in devcontainer.json to forward ports
+
+volumes:
+  node_modules: 
