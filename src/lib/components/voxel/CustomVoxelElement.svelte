@@ -31,8 +31,8 @@
     function setPlayerPosition() {
         voxelGameStore.update(state => ({
             ...state,
-            playerPosition: { x: 0, y: 5, z: 12 },
-            playerRotation: { yaw: 180, pitch: 0 }
+            playerPosition: { x: 0, y: 10, z: 20 }, // Higher up and further back
+            playerRotation: { yaw: 180, pitch: 0 } // Look directly at the tall structure
         }));
     }
     
@@ -54,8 +54,11 @@
             clearVoxels();
             progress = "Creating pink textured terrain...";
             await createTerrain();
-            progress = "Adding childlike character...";
+            
+            console.log("%c CREATING CHARACTER - LOOK FOR TALL PILLAR WITH FLAG", "background: red; color: white; font-size: 20px; padding: 10px;");
+            progress = "Adding childlike character with TALL PILLAR...";
             await createCharacter();
+            
             progress = "Adding trident and accessories...";
             await createAccessories();
             progress = "Scene creation complete!";
@@ -104,6 +107,20 @@
             const centerX = 0;
             const centerZ = 0;
             const baseHeight = 1;
+            
+            // SUPER OBVIOUS CHANGE: Add a very tall pillar at character position
+            // This should be impossible to miss
+            for (let y = 0; y <= 20; y++) {
+                addVoxel("stone", centerX, baseHeight + y, centerZ);
+            }
+            
+            // Add bright "flag" at the top - alternating pattern that's very visible
+            for (let x = -3; x <= 3; x++) {
+                addVoxel("leaves", centerX + x, baseHeight + 20, centerZ);
+                if (x % 2 === 0) {
+                    addVoxel("wood", centerX + x, baseHeight + 21, centerZ);
+                }
+            }
             
             // Create a more bulky, blocky childlike character
             
