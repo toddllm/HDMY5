@@ -17,6 +17,7 @@
     "test:e2e:simple": "npx playwright test tests/simple-test.spec.ts --project=chromium --reporter=list",
     "test:e2e:visual": "./run-visual-tests.sh",
     "test:e2e:visual:headed": "./run-visual-tests-headed.sh",
+    "test:e2e:visual:xvfb": "./run-visual-tests-xvfb.sh",
     "test:e2e:voxel": "./run-voxel-tests.sh",
     "test:e2e:voxel:headed": "./run-voxel-tests-headed.sh",
     "test:all": "npm run test && npm run test:e2e:simple",

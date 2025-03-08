@@ -1,23 +1,27 @@
 /** @type {import('ts-jest').JestConfigWithTsJest} */
 export default {
-  preset: 'ts-jest',
-  testEnvironment: 'jsdom',
+  preset: "ts-jest",
+  testEnvironment: "jsdom",
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/src/$1'
+    "^@/(.*)$": "<rootDir>/src/$1",
   },
   transform: {
-    '^.+\\.ts$': [
-      'ts-jest',
+    "^.+\\.ts$": [
+      "ts-jest",
       {
         tsconfig: {
           allowJs: true,
-          target: 'es2020',
+          target: "es2020",
           esModuleInterop: true,
-          module: 'esnext',
-          moduleResolution: 'node'
-        }
-      }
-    ]
+          module: "esnext",
+          moduleResolution: "node",
+        },
+      },
+    ],
   },
-  extensionsToTreatAsEsm: ['.ts', '.tsx']
-}; 
+  extensionsToTreatAsEsm: [".ts", ".tsx"],
+  testPathIgnorePatterns: [
+    "/node_modules/",
+    "/tests/", // Exclude Playwright tests
+  ],
+};
