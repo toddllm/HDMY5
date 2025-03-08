@@ -19,11 +19,14 @@ jobs:
         run: npx playwright install --with-deps
       - name: Create report directory
         run: mkdir -p playwright-report
-      - name: Run Playwright tests
-        run: npm run test:e2e:simple || true
-      - name: Generate a report even if tests fail
-        if: always()
-        run: npx playwright show-report --reporter=html
+      - name: Run Playwright tests with report generation
+        run: npx playwright test tests/simple-test.spec.ts --project=chromium --reporter=html,list
+      - name: Create dummy report if tests fail
+        if: failure()
+        run: |
+          mkdir -p playwright-report
+          touch playwright-report/index.html
+          echo '<html><body><h1>Test Run Failed</h1><p>Please check the logs for details.</p></body></html>' > playwright-report/index.html
       - uses: actions/upload-artifact@v4
         if: always()
         with:
