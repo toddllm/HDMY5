@@ -1,3 +1,90 @@
+# ColorWorld.live Voxel Game
+
+An interactive voxel game demo and editor built with SvelteKit and Three.js.
+
+## Features
+
+- **Interactive Voxel Demo**: Experience a 3D voxel environment
+- **Voxel Editor**: Create and customize your own voxel structures
+- **Game Builder**: Powerful tool for creating game experiences
+
+## Deployment Information
+
+The application is deployed at [https://colorworld.live](https://colorworld.live) and consists of:
+
+1. A SvelteKit application that provides the interactive components
+2. A Node.js Express server that serves the application
+3. Nginx as a reverse proxy with HTTPS/SSL support
+
+### Server Setup
+
+The application is configured to run on an AWS EC2 instance with the following components:
+
+- Ubuntu 22.04 LTS
+- Node.js v22.14.0 (via NVM)
+- Nginx 1.18.0
+- Let's Encrypt SSL certificates
+
+### Application Structure
+
+- **Welcome Page**: Entry point at the root URL
+- **Routes**:
+  - `/voxel-demo`: Interactive voxel demo
+  - `/custom-voxel`: Voxel editor
+  - `/builder`: Game builder
+
+### Deployment Process
+
+The deployment uses a systemd service to ensure the application runs continuously:
+
+```bash
+# Installation
+cd ~/colorworld
+npm install
+
+# Starting the service
+sudo systemctl start colorworld-voxel
+
+# Checking status
+sudo systemctl status colorworld-voxel
+
+# Viewing logs
+sudo journalctl -u colorworld-voxel
+```
+
+### Server Configuration Files
+
+- `simple-server.js`: The Express server that serves the SvelteKit application
+- `colorworld-voxel.service`: Systemd service file for managing the application
+- `colorworld-nginx.conf`: Nginx configuration for the domain with SSL
+
+## Local Development
+
+To run the application locally:
+
+```bash
+# Install dependencies
+npm install
+
+# Start the development server
+npm run dev
+
+# Build for production
+npm run build
+```
+
+## Troubleshooting
+
+If you encounter issues with the application:
+
+1. Check the server logs: `sudo journalctl -u colorworld-voxel`
+2. Verify Nginx is running: `sudo systemctl status nginx`
+3. Check for errors in the Nginx logs: `sudo tail -f /var/log/nginx/error.log`
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
 # sv
 
 Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
