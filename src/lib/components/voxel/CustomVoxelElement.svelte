@@ -310,6 +310,10 @@
         </div>
     {/if}
     
+    <div class="component-indicator">
+        <p>⭐ IMAGE-BASED COMPONENT ACTIVE ⭐</p>
+    </div>
+    
     {#if error}
         <div class="error-container">
             <h3>Error:</h3>
@@ -340,6 +344,18 @@
         padding: 0.5rem 1rem;
         margin: 1rem;
         color: white;
+    }
+    
+    .component-indicator {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background-color: rgba(255, 215, 0, 0.8);
+        color: black;
+        font-weight: bold;
+        padding: 5px 10px;
+        border-radius: 4px;
+        z-index: 1000;
     }
     
     pre {
