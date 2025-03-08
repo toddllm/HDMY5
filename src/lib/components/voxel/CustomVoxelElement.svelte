@@ -8,17 +8,41 @@
     // Elements extracted from analysis
     const structures: string[] = [];
     
+    // Error state
+    let error: string | null = null;
+    
     onMount(() => {
-        // Generate terrain based on analysis
-        generateFlatTerrain(20, 0);
-        
-        // Example: Create a simple structure based on extracted elements
-        createDemoStructure();
+        try {
+            console.log("CustomVoxelElement mounted");
+            
+            // Generate terrain based on analysis
+            try {
+                console.log("Generating flat terrain...");
+                generateFlatTerrain(20, 0);
+                console.log("Flat terrain generated successfully");
+            } catch (terrainError) {
+                console.error("Error generating terrain:", terrainError);
+                error = `Error generating terrain: ${terrainError}`;
+                return;
+            }
+            
+            // Example: Create a simple structure based on extracted elements
+            try {
+                console.log("Creating demo structure...");
+                createDemoStructure();
+                console.log("Demo structure created successfully");
+            } catch (structureError) {
+                console.error("Error creating structure:", structureError);
+                error = `Error creating structure: ${structureError}`;
+            }
+        } catch (e) {
+            console.error("General error in onMount:", e);
+            error = `General error: ${e}`;
+        }
     });
     
     function createDemoStructure() {
-        // This is a simple example that creates a structure based on the analysis
-        // In a real implementation, you would use the extracted elements more extensively
+        console.log("Starting createDemoStructure");
         
         const baseHeight = 1;
         const centerX = 0;
@@ -27,20 +51,32 @@
         // Create a base platform
         for (let x = -3; x <= 3; x++) {
             for (let z = -3; z <= 3; z++) {
-                // Use different colors based on pattern
-                const colorIndex = (Math.abs(x) + Math.abs(z)) % colors.length;
-                const voxelType = getVoxelTypeFromColor(colors[colorIndex]);
-                
-                // Call addVoxel with separate arguments (type, x, y, z)
-                addVoxel(voxelType, centerX + x, baseHeight, centerZ + z);
+                try {
+                    // Use different colors based on pattern
+                    const colorIndex = (Math.abs(x) + Math.abs(z)) % colors.length;
+                    const voxelType = getVoxelTypeFromColor(colors[colorIndex]);
+                    
+                    console.log(`Adding voxel at (${centerX + x}, ${baseHeight}, ${centerZ + z}) with type ${voxelType}`);
+                    
+                    // Call addVoxel with separate arguments (type, x, y, z)
+                    addVoxel(voxelType, centerX + x, baseHeight, centerZ + z);
+                } catch (voxelError) {
+                    console.error(`Error adding voxel at (${x}, ${baseHeight}, ${z}):`, voxelError);
+                    error = `Error adding voxel: ${voxelError}`;
+                }
             }
         }
         
         // Add vertical elements if structures were detected
         if (structures.includes('tower') || structures.includes('building') || structures.includes('tree')) {
             for (let y = 1; y <= 5; y++) {
-                // Call addVoxel with separate arguments (type, x, y, z)
-                addVoxel("stone", centerX, baseHeight + y, centerZ);
+                try {
+                    // Call addVoxel with separate arguments (type, x, y, z)
+                    addVoxel("stone", centerX, baseHeight + y, centerZ);
+                } catch (structureError) {
+                    console.error(`Error adding structure at (${centerX}, ${baseHeight + y}, ${centerZ}):`, structureError);
+                    error = `Error adding structure voxel: ${structureError}`;
+                }
             }
         }
     }
@@ -80,10 +116,36 @@
     }
 </script>
 
+{#if error}
+<div class="error-container">
+    <h3>Error:</h3>
+    <pre>{error}</pre>
+</div>
+{/if}
+
 <div>
     <!-- Component content is handled by VoxelGameCanvas -->
 </div>
 
 <style>
     /* Any specific styles would go here */
+    .error-container {
+        background-color: rgba(255, 0, 0, 0.1);
+        border: 1px solid red;
+        border-radius: 4px;
+        padding: 1rem;
+        margin: 1rem;
+        color: white;
+    }
+    
+    .error-container h3 {
+        margin-top: 0;
+        color: red;
+    }
+    
+    pre {
+        white-space: pre-wrap;
+        word-break: break-word;
+        color: white;
+    }
 </style>
