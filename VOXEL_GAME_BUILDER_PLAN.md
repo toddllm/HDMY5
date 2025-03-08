@@ -18,7 +18,7 @@ This document outlines the step-by-step process of creating a voxel-style game u
 - [x] Create a detailed project plan (this document)
 - [x] Analyze the game builder interface and document features/limitations
 - [x] Analyze the voxel demo and document its components
-- [ ] Set up a new game project in the builder
+- [x] Set up a new game project in the builder
 
 ### Phase 2: Basic Scene Creation
 
@@ -93,9 +93,9 @@ This document outlines the step-by-step process of creating a voxel-style game u
 
 #### Task 1.4: Create Initial Game Project
 
-- [ ] Set up a new 3D scene in the game builder
-- [ ] Configure basic project settings
-- [ ] Document the setup process
+- [x] Set up a new 3D scene in the game builder
+- [x] Configure basic project settings
+- [x] Document the setup process
 
 ### Phase 2: Basic Scene Creation
 
@@ -151,6 +151,15 @@ Potential improvements to the game builder:
 4. Improve first-person camera controls
 5. Add block interaction mechanics
 
+### Progress Updates
+
+#### March 8, 2023
+
+- Created project plan and analysis documents
+- Set up initial voxel game project structure
+- Created basic components for the voxel game
+- Implemented a simple store for managing voxel game state
+
 ## Testing Plan
 
 For each phase, we will:
@@ -174,6 +183,7 @@ We will follow this git workflow:
 
 - Existing voxel demo: http://localhost:5173/voxel-demo
 - Game builder interface: http://localhost:5173/
+- Our voxel game: http://localhost:5173/voxel-game
 - Project documentation: README.md and other docs in the repository
 - Game Builder Analysis: GAME_BUILDER_ANALYSIS.md
 - Voxel Demo Analysis: VOXEL_DEMO_ANALYSIS.md
