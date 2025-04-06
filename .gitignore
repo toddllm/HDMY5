@@ -1,8 +1,74 @@
- # Screenshot and image files for testing only
+# Node.js dependencies
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+.pnpm-debug.log
+.npm/
+
+# SvelteKit
+.svelte-kit/
+build/
+.vercel
+.netlify
+.output/
+
+# Vite
+dist/
+.vite/
+
+# TypeScript
+*.tsbuildinfo
+*.js.map
+*.d.ts.map
+
+# Testing
+/test-results/
+/playwright-report/
+/blob-report/
+/coverage/
+/junit.xml
+/test_screenshots/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Screenshot and image files for testing only
 *-initial.png
 *-final.png
 found-*.png
 app-loaded.png
 page-structure.png
 ui-elements-*.png
-interactive-elements-*.png 
+interactive-elements-*.png
+
+# Logs
+logs
+*.log
+
+# Build artifacts
+.cache/
